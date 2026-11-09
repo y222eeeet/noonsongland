@@ -15,3 +15,14 @@ export const supabase = url && key
   : null
 
 export const isSupabaseConfigured = Boolean(supabase)
+
+export async function ensureAnonymousSession() {
+  if (!supabase) {
+    return { data: { session: null }, error: new Error('Supabase 설정을 찾지 못했어요.') }
+  }
+
+  const current = await supabase.auth.getSession()
+  if (current.error || current.data.session) return current
+
+  return supabase.auth.signInAnonymously()
+}
