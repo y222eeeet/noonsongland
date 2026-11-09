@@ -3,7 +3,8 @@ import * as T from 'three';
 // Sculptural bronze group: three women, led by a torch bearer. Front is +Z.
 export function createBronzeWomen(){
  const root=new T.Group();root.name='three-women-bronze';
- const bronze=new T.MeshStandardMaterial({vertexColors:true,metalness:.45,roughness:.69});
+ const bronze=new T.MeshStandardMaterial({vertexColors:true,metalness:.45,roughness:.69,emissive:'#63503b',emissiveIntensity:0});
+ bronze.userData.nightBronze=true;
  const dark=new T.MeshStandardMaterial({color:'#263c36',metalness:.65,roughness:.76});
  function sculpt(parent,geometry,position=[0,0,0],scale=[1,1,1],material=bronze){
   if(material===bronze){const p=geometry.attributes.position,colors=[],c=new T.Color(),warm=new T.Color('#96745a'),green=new T.Color('#588b7d');for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);const n=Math.sin(x*17+y*11+z*23)*.15+Math.sin(x*5-y*7+z*9)*.25+Math.sin(x*41+y*27)*.07;const mix=T.MathUtils.clamp(.42+n,.08,.86);c.copy(warm).lerp(green,mix).multiplyScalar(.8+.22*Math.sin(y*13+x*7)**2);colors.push(c.r,c.g,c.b)}geometry.setAttribute('color',new T.Float32BufferAttribute(colors,3));}

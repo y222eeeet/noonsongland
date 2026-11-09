@@ -16,8 +16,8 @@ export function createDayNight(scene,sun,windowMaterial){
   const lightNight=new T.Color('#9daee8'),lightDay=new T.Color('#fff3d9');
   const ambientNight=new T.Color('#a3b2e5'),ambientDay=new T.Color('#fff8ee');
   const floorNight=new T.Color('#45546a'),floorDay=new T.Color('#8ab998');
-  const windows=new Set([windowMaterial]);
-  scene.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)if(m.userData?.campusWindow)windows.add(m);}});
+  const windows=new Set([windowMaterial]),bronzes=new Set();
+  scene.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.userData?.campusWindow)windows.add(m);if(m.userData?.nightBronze)bronzes.add(m);}}});
   const bulbs=[];scene.traverse(o=>{if(o.isMesh&&o.material?.emissiveIntensity>.1)bulbs.push(o.material);});
   const lamps=[];
   for(const [x,y,z] of [[-3,3.25,5],[3,3.25,5],[-18,14,-23],[-18,14,-29],[-81,14,-28],[-86,14,2]]){
@@ -42,6 +42,7 @@ export function createDayNight(scene,sun,windowMaterial){
     sun.color.copy(lightNight).lerp(lightDay,day);sun.intensity=.25+2.55*day;
     if(hemi){hemi.color.copy(ambientNight).lerp(ambientDay,day);hemi.groundColor.copy(floorNight).lerp(floorDay,day);hemi.intensity=.65+1.55*day;}
     for(const m of windows){m.emissive.set('#ffd49b');m.emissiveIntensity=night*.55;}
+    for(const m of bronzes){m.emissiveIntensity=night*.28;m.metalness=.45-night*.15;}
     bulbs.forEach(m=>m.emissiveIntensity=.08+.8*night);
     lamps.forEach(l=>l.intensity=night*13);
     stars.material.opacity=night*.8;stars.visible=night>.01;
