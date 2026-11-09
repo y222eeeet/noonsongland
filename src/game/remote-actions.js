@@ -73,6 +73,7 @@ export function createRemoteActions(avatar, scene) {
   const life=(now-started)/1000;cloud.visible=event!==null&&life>=0&&life<duration;
   if(cloud.visible){const smokeCloud=cloud.userData.smoke;cloud.position.y+=dt*(smokeCloud?.65:1.3);cloud.position.x+=Math.sin(cloud.userData.rotation)*dt*.25;cloud.position.z+=Math.cos(cloud.userData.rotation)*dt*.25;material.color.set(smokeCloud?'#ece7f5':'#f8efff');material.opacity=.5*(1-life/duration);cloud.children.forEach((p,i)=>{p.position.set(Math.sin(i*2.4)*(.15+life*.15),(i%5)*.13,Math.cos(i*1.7)*.18);p.scale.setScalar(.6+life*.45)});}
  }
- function dispose(){scene.remove(cloud,sigh);sigh.children.forEach(p=>p.geometry.dispose());sighMaterial.dispose();cloud.children.forEach(p=>p.geometry.dispose());material.dispose();}
- return {update,dispose};
+ function hide(){smokingArm.visible=false;cigarette.visible=false;cloud.visible=false;sigh.visible=false;avatar.userData.parts.arm0.visible=true;}
+ function dispose(){hide();scene.remove(cloud,sigh);sigh.children.forEach(p=>p.geometry.dispose());sighMaterial.dispose();cloud.children.forEach(p=>p.geometry.dispose());material.dispose();}
+ return {update,hide,dispose};
 }
