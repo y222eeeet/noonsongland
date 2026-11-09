@@ -7,7 +7,8 @@ export function createSkyRealm(scene){
  const cloudMaterial=new T.MeshStandardMaterial({color:'#fff8f3',roughness:.9});
  const shadeMaterial=new T.MeshStandardMaterial({color:'#ded5f5',roughness:.88});
  const lavender=new T.MeshStandardMaterial({color:'#bda7e3',roughness:.88});
- const add=(parent,geometry,material,position)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=mesh.receiveShadow=true;parent.add(mesh);return mesh};
+ // The sky realm is intentionally soft and weightless: no ground or object shadows.
+ const add=(parent,geometry,material,position)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;parent.add(mesh);return mesh};
  function puff(parent,x,y,z,scale=1,material=cloudMaterial){const mesh=add(parent,new T.SphereGeometry(.9,16,12),material,[x,y,z]);mesh.scale.set(1.25*scale,.7*scale,scale);return mesh}
 
  // Soft, continuous cloud floor that reads as a place to lie down rather than a platform.
