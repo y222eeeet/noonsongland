@@ -12,8 +12,8 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>g.dispose());materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id)}
  function label(name){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');ctx.font='bold 30px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=9;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,256,64);ctx.fillStyle='#5f5473';ctx.fillText(name,256,64);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.position.y=5.45;sprite.scale.set(3.5,.875,1);return sprite}
  function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);
-  for(const id of peers.keys())if(!members.has(id))remove(id);
-  for(const [id,m] of members)if(id!==connectionId&&!peers.has(id)&&peers.size<100){const mesh=createSongi();mesh.visible=false;scene.add(mesh);peers.set(id,{mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null})}
+  const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)){peer.missingSince??=now;if(now-peer.missingSince>15000)remove(id)}else peer.missingSince=0;
+  for(const [id,m] of members)if(id!==connectionId&&!peers.has(id)&&peers.size<100){const mesh=createSongi();mesh.visible=false;scene.add(mesh);peers.set(id,{mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,missingSince:0})}
   for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state);
 
  }
