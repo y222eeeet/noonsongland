@@ -13,7 +13,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function createPeer(id){if(peers.has(id)||peers.size>=100)return peers.get(id);const mesh=createSongi();mesh.visible=false;scene.add(mesh);const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,missingSince:0};peers.set(id,peer);return peer}
  function label(name){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');ctx.font='bold 30px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=9;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,256,64);ctx.fillStyle='#5f5473';ctx.fillText(name,256,64);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.position.y=5.45;sprite.scale.set(3.5,.875,1);return sprite}
  function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);
-  const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)){peer.missingSince??=now;if(now-peer.missingSince>60000)remove(id)}else peer.missingSince=0;
+  const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)&&peer.last>0&&now-peer.last>120000)remove(id);else if(members.has(id))peer.missingSince=0;
   for(const [id] of members)if(id!==connectionId)createPeer(id)
   for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state);
 
