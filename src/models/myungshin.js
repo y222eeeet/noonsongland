@@ -10,7 +10,7 @@ export function addMyungshinHall(world, obstacles, M){
   const mesh=(g,m,x,y,z,parent=scene)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o;};
   function label(text,w,h,x,y,z,rotation=0){
     const c=document.createElement('canvas');c.width=1024;c.height=160;const ctx=c.getContext('2d');ctx.fillStyle='#fff8ed';ctx.fillRect(0,0,1024,160);ctx.fillStyle='#655873';ctx.font='bold 64px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,80);
-    const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;const sign=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:t}),x,y,z);sign.rotation.y=rotation;
+    const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;const sign=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:t}),x,y,z);sign.rotation.y=rotation;sign.castShadow=sign.receiveShadow=false;
   }
   // A north-south wing, perpendicular to Jinri's east-west elevation.
   const hall=new T.Group();hall.position.set(-46,campusY,-17);scene.add(hall);
@@ -25,7 +25,7 @@ export function addMyungshinHall(world, obstacles, M){
   mesh(new T.BoxGeometry(.18,2.7,3),M.dark,3.55,1.4,5,hall);
   mesh(new T.BoxGeometry(1.9,.24,5),M.pink,4,2.9,5,hall);
   mesh(new T.BoxGeometry(3,.22,5),M.cream,4.2,.11,5,hall);
-  label('05 명신관',6,1,-42.42,campusY+9.9,-17,Math.PI/2);
+  label('명신관',6,1,-42.20,campusY+9.9,-17,Math.PI/2);
   obstacles.push({x:-46,z:-17,w:3.6,h:12.3});
   // Solid upper ground also supports both routes around the ends of the wing.
   mesh(new T.BoxGeometry(30,10.92,10),M.cream,-55,5.14,-1.5);
@@ -59,7 +59,6 @@ export function addMyungshinHall(world, obstacles, M){
   bin(-55,-3);bin(-63,-3);
   mesh(new T.CylinderGeometry(.19,.24,1,10),wood,-57,campusY+.5,-10);
   mesh(new T.CylinderGeometry(.32,.32,.12,12),M.dark,-57,campusY+1.04,-10);
-  label('명신관 뒤편 · 흡연구역',7.5,1.1,-59,campusY+2,-2);
   for(let i=obstacleStart;i<obstacles.length;i++){obstacles[i].x-=27;obstacles[i].z+=21;}
   return {minX:-101,maxX:47,minZ:-70,maxZ:35};
 }
@@ -83,10 +82,6 @@ export function addRearGate(world,obstacles,M){
     obstacles.push({x,z:-17,w:.6,h:.65});
   }
   make(new T.BoxGeometry(11.5,.8,1.0),M.lav,-46,base+4.55,-17);
-  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;
-  const ctx=canvas.getContext('2d');ctx.fillStyle='#b99ddd';ctx.fillRect(0,0,512,96);ctx.fillStyle='#fff8ed';ctx.font='bold 52px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('숙명 · 후문',256,48);
-  const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
-  make(new T.PlaneGeometry(6,.7),new T.MeshBasicMaterial({map:texture,side:T.DoubleSide}),-46,base+4.55,-16.48);
   // Short fence wings leave the middle completely open for walking.
   for(const side of [-1,1]){
     const x=-46+side*8;
@@ -125,6 +120,5 @@ export function addNorthSmokingArea(scene,obstacles,M){
     make(new T.CylinderGeometry(.29,.29,.1,10),M.cream,x,y+.95,-25);
     obstacles.push({x,z:-25,r:.3});
   }
-  const c=document.createElement('canvas');c.width=768;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#fff8ed';ctx.fillRect(0,0,768,128);ctx.fillStyle='#655873';ctx.font='bold 52px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('진리관 옆 · 흡연구역',384,64);const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;
-  make(new T.PlaneGeometry(7,1.15),new T.MeshBasicMaterial({map:t,side:T.DoubleSide}),-81,y+2,-31.5);
+
 }
