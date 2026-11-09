@@ -4,5 +4,4 @@ output/
 data/guestbook.json
 .env
 .env.*
-!.env.example
 /*.png
