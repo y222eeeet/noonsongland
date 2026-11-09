@@ -8,9 +8,15 @@ export function createSkyRealm(scene){
  const cloudMaterial=new T.MeshStandardMaterial({color:'#fff8f3',roughness:.9});
  const shadeMaterial=new T.MeshStandardMaterial({color:'#ded5f5',roughness:.88});
  const lavender=new T.MeshStandardMaterial({color:'#bda7e3',roughness:.88});
+ const worldBaseMaterial=new T.MeshBasicMaterial({color:'#e7edf8'});
  // The sky realm is intentionally soft and weightless: no ground or object shadows.
  const add=(parent,geometry,material,position)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;parent.add(mesh);return mesh};
  function puff(parent,x,y,z,scale=1,material=cloudMaterial){const mesh=add(parent,new T.SphereGeometry(.9,16,12),material,[x,y,z]);mesh.scale.set(1.25*scale,.7*scale,scale);return mesh}
+
+ // A sealed, oversized cloud layer keeps the campus below from ever showing
+ // through gaps in the decorative cloud puffs: this is a separate sky world.
+ const worldBase=new T.Mesh(new T.CircleGeometry(180,64),worldBaseMaterial);
+ worldBase.rotation.x=-Math.PI/2;worldBase.position.y=-3.1;worldBase.castShadow=worldBase.receiveShadow=false;root.add(worldBase);
 
  // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
  // Instancing keeps the denser cloud carpet to two draw calls.
@@ -43,6 +49,6 @@ export function createSkyRealm(scene){
  portal.traverse(object=>object.userData.skyPortal=true);
 
  let lastTheme='';
- function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;sun.visible=day;starGroup.visible=!day}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
+ function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;sun.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#e7edf8':'#151a35')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
  return {root,portal,beds,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
 }
