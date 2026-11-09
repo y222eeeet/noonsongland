@@ -10,7 +10,7 @@ export function createRemoteActions(avatar, scene) {
  const thumb=new T.Mesh(new T.SphereGeometry(.095,10,8),cream);thumb.position.set(.14,0,.06);
  grip.add(hand,thumb,cigarette);smokingArm.add(upperArm,forearm,grip);avatar.add(smokingArm);smokingArm.visible=false;
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
- const shoulder=new T.Vector3(-.57,2.03,0),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
+ const shoulder=new T.Vector3(-.85,2.03,.8),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
  let handLift=0;
  function connectArm(segment,a,b){direction.subVectors(b,a);segment.position.copy(a).add(b).multiplyScalar(.5);segment.quaternion.setFromUnitVectors(up,direction.clone().normalize());segment.scale.y=Math.max(.05,direction.length()/1.3);}
 
@@ -38,8 +38,8 @@ export function createRemoteActions(avatar, scene) {
   if(!smoke)handLift=0;
   smokingArm.visible=smoke;
   // The observer sees the avatar's right hand, with the cigarette attached to it.
-  handPosition.set(-.85+.53*handLift,1.60+1.04*handLift,.48+.57*handLift);
-  elbow.set(-.92,1.86+.30*handLift,.23+.41*handLift);
+  handPosition.set(-.95+.63*handLift,1.75+.89*handLift,1.12+.23*handLift);
+  elbow.set(-1.05,1.86+.30*handLift,.95+.15*handLift);
   grip.position.copy(handPosition);grip.rotation.x=.30*(1-handLift);
   connectArm(upperArm,shoulder,elbow);connectArm(forearm,elbow,handPosition);
   const burn=Number.isFinite(s.smokeBurn)?Math.max(.2,Math.min(1,s.smokeBurn)):1;
