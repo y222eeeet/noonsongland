@@ -2,17 +2,29 @@ import * as T from 'three';
 
 // Each remote avatar owns its props and materials so teardown stays local.
 export function createRemoteActions(avatar, scene) {
- const cigarette=new T.Group();
+ const cigarette=new T.Group(),smokingArm=new T.Group(),grip=new T.Group();
+ const cream=new T.MeshStandardMaterial({color:'#fff5e7',roughness:.88});
+ const upperArm=new T.Mesh(new T.CapsuleGeometry(.15,1,5,10),cream);
+ const forearm=new T.Mesh(new T.CapsuleGeometry(.15,1,5,10),cream);
+ const hand=new T.Mesh(new T.SphereGeometry(.19,12,8),cream);
+ const thumb=new T.Mesh(new T.SphereGeometry(.095,10,8),cream);thumb.position.set(.14,0,.06);
+ grip.add(hand,thumb,cigarette);smokingArm.add(upperArm,forearm,grip);avatar.add(smokingArm);smokingArm.visible=false;
+ smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
+ const shoulder=new T.Vector3(-.57,2.03,0),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
+ let handLift=0;
+ function connectArm(segment,a,b){direction.subVectors(b,a);segment.position.copy(a).add(b).multiplyScalar(.5);segment.quaternion.setFromUnitVectors(up,direction.clone().normalize());segment.scale.y=Math.max(.05,direction.length()/1.3);}
+
  const paper=new T.MeshStandardMaterial({color:'#f7eee2'});
  const ember=new T.MeshStandardMaterial({color:'#ff8d5c',emissive:'#ff4f37'});
  const stick=new T.Mesh(new T.CylinderGeometry(.045,.045,.55,10),paper);
- stick.rotation.x=Math.PI/2;cigarette.add(stick);
- const tip=new T.Mesh(new T.SphereGeometry(.048,8,6),ember);tip.position.z=.28;cigarette.add(tip);
- avatar.add(cigarette);cigarette.visible=false;
+ stick.rotation.x=Math.PI/2;stick.position.z=.36;cigarette.add(stick);
+ const filter=new T.Mesh(new T.CylinderGeometry(.047,.047,.16,10),new T.MeshStandardMaterial({color:'#d7b18a',roughness:1}));filter.rotation.x=Math.PI/2;filter.position.z=.06;cigarette.add(filter);
+ const tip=new T.Mesh(new T.SphereGeometry(.048,8,6),ember);tip.position.z=.66;cigarette.add(tip);
+ cigarette.visible=false;
  const cloud=new T.Group();scene.add(cloud);cloud.visible=false;
  const material=new T.MeshStandardMaterial({color:'#f8efff',transparent:true,opacity:0,depthWrite:false});
  for(let i=0;i<16;i++){const puff=new T.Mesh(new T.SphereGeometry(.22+(i%3)*.05,10,8),material);cloud.add(puff)}
- let event=null,started=0,duration=0,smoking=false;
+ let event=null,started=0,duration=0;
  const sigh=new T.Group(),sighMaterial=new T.MeshStandardMaterial({color:'#f8efff',transparent:true,opacity:.58,roughness:.35,depthWrite:false});
  const initial=[[0,0,0,.24],[.13,.22,.02,.3],[-.08,.48,0,.36],[.12,.73,.01,.28]];
  for(let i=0;i<16;i++){const [x,y,z,r]=initial[i%4];const puff=new T.Mesh(new T.SphereGeometry(i<4?r:.24,16,12),sighMaterial);if(i<4)puff.position.set(x,y,z);else{puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2)}sigh.add(puff)}
@@ -22,12 +34,18 @@ export function createRemoteActions(avatar, scene) {
   const smoke=s.smoking===true,phase=smoke?s.smokePhase:s.action;
   cigarette.visible=smoke;
   const lift=smoke&&phase==='inhale';
-  cigarette.position.set(lift?.26:.8,lift?2.62:1.65,.95);
-  stick.scale.y=Math.max(.2,Math.min(1,s.smokeBurn??1));
+  handLift+=(Number(lift)-handLift)*(1-Math.exp(-Math.max(0,dt)*6));
+  if(!smoke)handLift=0;
+  smokingArm.visible=smoke;
+  // The observer sees the avatar's right hand, with the cigarette attached to it.
+  handPosition.set(-.85+.53*handLift,1.60+1.04*handLift,.48+.57*handLift);
+  elbow.set(-.92,1.86+.30*handLift,.23+.41*handLift);
+  grip.position.copy(handPosition);grip.rotation.x=.30*(1-handLift);
+  connectArm(upperArm,shoulder,elbow);connectArm(forearm,elbow,handPosition);
+  const burn=Number.isFinite(s.smokeBurn)?Math.max(.2,Math.min(1,s.smokeBurn)):1;
+  stick.scale.y=burn;stick.position.z=.085+.275*burn;tip.position.z=.085+.55*burn;
   ember.emissiveIntensity=lift?1.8:.1;
-  if(smoke){avatar.userData.parts.arm0.rotation.x=lift?-1.3:-.5;avatar.userData.parts.arm0.rotation.z=-.25;}
-  else if(smoking)avatar.userData.parts.arm0.rotation.z=0;
-  smoking=smoke;
+  avatar.userData.parts.arm0.visible=!smoke;
   const action=phase==='inhale'?'inhale':phase==='exhale'?'exhale':'idle';
   const held=Math.max(0,Math.min(120,s.held+(action==='inhale'?elapsed:0)));
   avatar.userData.animate(now/1000,action,held);
