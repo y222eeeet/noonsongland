@@ -49,7 +49,7 @@ export function createRemoteActions(avatar, scene) {
   const action=phase==='inhale'?'inhale':phase==='exhale'?'exhale':'idle';
   const held=Math.max(0,Math.min(120,s.held+(action==='inhale'?elapsed:0)));
   // Smoking uses the expression, but never the sigh's held-time complexion.
-  avatar.userData.animate(now/1000,action,smoke?0:held);
+  avatar.userData.animate(now/1000,s.realm==='sky'&&s.skyPose==='sleep'?'sleep':action,smoke?0:held);
   // Retain the release timeline across idle packets and animate every frame.
   if(s.sighEvent>0&&Number.isFinite(s.sighAge)&&s.sighVisual?.origin?.length===3&&s.sighVisual.origin.every(Number.isFinite)){
    if(s.sighEvent!==sighEvent){sighEvent=s.sighEvent;sighStarted=now-(Math.max(0,s.sighAge)+elapsed)*1000;}

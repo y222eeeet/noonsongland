@@ -142,9 +142,25 @@ export function createSongi() {
     feature.geometry.computeBoundingSphere();
   }
   root.userData.parts=parts;
+  const sleepBubbles=new T.Group();sleepBubbles.name='sleep-bubbles';root.add(sleepBubbles);sleepBubbles.visible=false;
+  for(let i=0;i<5;i++){
+    const bubble=new T.Mesh(new T.SphereGeometry(1,12,8),new T.MeshStandardMaterial({color:'#e6e2ff',transparent:true,opacity:0,roughness:.22,metalness:.08,depthWrite:false}));
+    bubble.castShadow=bubble.receiveShadow=false;sleepBubbles.add(bubble);
+  }
   const normalFace=new T.Color('#fff5e7'),pinkFace=new T.Color('#f3bdca'),grayFace=new T.Color('#a6a5ad');
   const targetFace=new T.Color();let lastExpressionTime=0;
   root.userData.animate=(elapsed,state='idle',heldSeconds=0)=>{
+    if(root.userData.skyPose==='sleep')state='sleep';
+    const sleeping=state==='sleep';
+    sleepBubbles.visible=sleeping;
+    const belly=sleeping?(1-Math.cos(elapsed*Math.PI/2))*.5:0;
+    parts.body.scale.z=1+belly*.075;parts.body.position.z=belly*.025;
+    if(sleeping)sleepBubbles.children.forEach((bubble,i)=>{
+      const age=(elapsed+i*.78)%3.9,t=age/3.9;
+      // The resting avatar lies on its back: local +Z points up into the sky.
+      bubble.position.set(Math.sin(age*1.8+i)*(.025+t*.10),2.91+Math.sin(age+i)*.035,1.02+t*1.35);
+      bubble.scale.setScalar(.035+t*.045);bubble.material.opacity=.42*Math.sin(Math.PI*t);
+    });
     const dt=Math.max(0,Math.min(.1,elapsed-lastExpressionTime));lastExpressionTime=elapsed;
     // Expression changes affect only face meshes and its dedicated material.
     parts.body.visible=true;
@@ -156,10 +172,10 @@ export function createSongi() {
       targetFace.lerp(pinkFace,T.MathUtils.smoothstep(heldSeconds,5,10));
     }
     faceMaterial.color.lerp(targetFace,1-Math.exp(-dt*5));
-    const inhale=state==='inhale',exhale=state==='exhale',breathing=inhale||exhale;
+    const inhale=state==='inhale',exhale=state==='exhale',breathing=inhale||exhale||sleeping;
     parts.eye0.visible=parts.eye1.visible=parts.mouth.visible=!breathing;
     smallEyes.forEach(o=>o.visible=inhale);
-    closedEyes.forEach(o=>o.visible=exhale);
+    closedEyes.forEach(o=>o.visible=exhale||sleeping);
     brows.forEach(o=>o.visible=exhale);
     openMouth.visible=mouthRim.visible=inhale;
     exhaleMouth.visible=exhaleLip.visible=exhale;
