@@ -12,8 +12,20 @@ export function createSkyRealm(scene){
  const add=(parent,geometry,material,position)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;parent.add(mesh);return mesh};
  function puff(parent,x,y,z,scale=1,material=cloudMaterial){const mesh=add(parent,new T.SphereGeometry(.9,16,12),material,[x,y,z]);mesh.scale.set(1.25*scale,.7*scale,scale);return mesh}
 
- // Soft, continuous cloud floor that reads as a place to lie down rather than a platform.
- for(let x=-14;x<=14;x+=2.2)for(let z=-12;z<=12;z+=2.1){const edge=Math.max(Math.abs(x)/14,Math.abs(z)/12);puff(root,x,.05+Math.sin(x*2+z)*.08,z,1.25-edge*.22,edge>.78?shadeMaterial:cloudMaterial)}
+ // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
+ // Instancing keeps the denser cloud carpet to two draw calls.
+ const cloudGeometry=new T.SphereGeometry(1,20,14),cloudTransform=new T.Object3D();
+ for(const layer of [{step:2.5,y:-1.30,r:2.05},{step:1.55,y:-.65,r:1.35}]){
+  const lobes=[];
+  for(let row=0,z=-12;z<=12;row++,z+=layer.step)for(let col=0,x=-14;x<=14;col++,x+=layer.step){
+   const seed=row*19.17+col*7.31,v=(Math.sin(seed)+1)/2;
+   lobes.push({x:x+(row%2)*layer.step*.5+Math.sin(seed*2.3)*.28,z:z+Math.cos(seed*1.7)*.26,y:layer.y+Math.sin(seed*1.3)*.08,r:layer.r*(.88+v*.22),v});
+  }
+  const carpet=new T.InstancedMesh(cloudGeometry,cloudMaterial,lobes.length);carpet.name='cloud-carpet';
+  const color=new T.Color();
+  lobes.forEach((lobe,i)=>{cloudTransform.position.set(lobe.x,lobe.y,lobe.z);cloudTransform.scale.set(lobe.r,lobe.r*(.78+lobe.v*.08),lobe.r*(.92+lobe.v*.12));cloudTransform.updateMatrix();carpet.setMatrixAt(i,cloudTransform.matrix);color.copy(cloudMaterial.color).lerp(shadeMaterial.color,lobe.v*.12);carpet.setColorAt(i,color)});
+  carpet.castShadow=carpet.receiveShadow=false;root.add(carpet);
+ }
  const rim=new T.Mesh(new T.TorusGeometry(15.2,.18,10,48),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
 
  const beds=[];
