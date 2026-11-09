@@ -1,7 +1,9 @@
 // One source of truth for floors that players may occupy.
 // Visual terrain can be larger for scenery/support, but it never grants movement.
 const upperWalkways=[
- {id:'soonheongwan-terrace',minX:-66,maxX:20,minZ:-22,maxZ:-5},
+ // The terrace starts beyond the top landing. Keeping the stair crest out of
+ // this rectangle prevents it from being mistaken for a 10.78m vertical wall.
+ {id:'soonheongwan-terrace',minX:-66,maxX:20,minZ:-22,maxZ:-5.92},
  {id:'myungshin-courtyard',minX:-70,maxX:-47,minZ:-10,maxZ:32},
  {id:'jinri-court',minX:-66,maxX:-36,minZ:-36,maxZ:-20},
  {id:'smoking-deck',minX:-97,maxX:-65,minZ:-32,maxZ:-20},
@@ -9,17 +11,21 @@ const upperWalkways=[
 ];
 
 const inside=(x,z,area)=>x>=area.minX&&x<=area.maxX&&z>=area.minZ&&z<=area.maxZ;
-const onMainStair=(x,z)=>Math.abs(x)<=6.7&&z>=-5.2&&z<=6.25;
+const onLowerFlight=(x,z)=>Math.abs(x)<=7.15&&z>=.08&&z<=5.72;
+const onMiddleLanding=(x,z)=>Math.abs(x)<=6.4&&z>=-1.52&&z<=.08;
+const onUpperFlight=(x,z)=>(x>=-5.85&&x<=-1.05||x>=1.05&&x<=5.85)&&z>=-4.87&&z<=-1.095;
+const onTopLanding=(x,z)=>Math.abs(x)<=5.8&&z>=-5.92&&z<=-4.32;
 
 export function createTraversal(){
  function upperAreaAt(x,z){return upperWalkways.find(area=>inside(x,z,area));}
  function heightAt(x,z){
+  // Match the visible two-flight stair construction: pink lower flight,
+  // central landing, then two lavender upper flights around the hedge.
+  if(onTopLanding(x,z))return 10.60;
+  if(onUpperFlight(x,z))return 6.24+(-1.095-z)/3.77*4.32;
+  if(onMiddleLanding(x,z))return 5.76;
+  if(onLowerFlight(x,z))return .46+(5.2-z)/5.12*4.80;
   if(upperAreaAt(x,z))return 10.78;
-  if(onMainStair(x,z)){
-   if(z<=-1.095)return 6.24+(-1.095-z)/4.055*4.54;
-   if(z<=.08)return 5.76;
-   return Math.max(0,(6.2-z)/6.12*5.76);
-  }
   return 0;
  }
  function canOccupy(x,z,bounds){return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
