@@ -103,7 +103,18 @@ export function createSongi() {
     mesh(new T.SphereGeometry(.24,12,8),cream,[sign*.23,2.12,.43]).scale.set(1,.55,.32);
   }
   const sCurve=new T.CatmullRomCurve3([[.15,.27],[-.02,.32],[-.20,.20],[-.13,.07],[.12,-.04],[.18,-.19],[.02,-.30],[-.18,-.25]].map(([x,y])=>new T.Vector3(x,y,0)));
-  mesh(new T.TubeGeometry(sCurve,28,.065,8,false),gold,[0,1.61,.73]);
+  const emblemGeometry=new T.TubeGeometry(sCurve,28,.065,8,false);
+  const emblemVertices=emblemGeometry.attributes.position,sector=Math.PI*2/16;
+  for(let i=0;i<emblemVertices.count;i++){
+    const x=emblemVertices.getX(i),y=emblemVertices.getY(i)-.04;
+    // Follow the actual tapered, 16-sided dress surface, including its slope.
+    const radius=.665-y*(.35/1.10),theta=Math.asin(T.MathUtils.clamp(x/radius,-1,1));
+    const faceAngle=(Math.floor(theta/sector)+.5)*sector;
+    const surface=(radius*Math.cos(sector/2)-x*Math.sin(faceAngle))/Math.cos(faceAngle);
+    emblemVertices.setXYZ(i,x,y,surface+.025+emblemVertices.getZ(i)*.55);
+  }
+  emblemGeometry.computeVertexNormals();
+  parts.emblem=mesh(emblemGeometry,gold,[0,0,0],parts.body);
   const breathFeatures=[];
   function expressionCurve(points,radius){
     const curve=new T.CatmullRomCurve3(points.map(([x,y])=>new T.Vector3(x,y,0)));
