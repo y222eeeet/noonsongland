@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { createCloudBed } from '../models/cloud-bed.js';
 
 const isDaytime=timestamp=>{const hour=new Date(timestamp).getHours();return hour>=6&&hour<18};
 
@@ -16,8 +17,8 @@ export function createSkyRealm(scene){
  const rim=new T.Mesh(new T.TorusGeometry(15.2,.18,10,48),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
 
  const beds=[];
- function makeBed(x,z){const bed=new T.Group();bed.position.set(x,.65,z);root.add(bed);add(bed,new T.CapsuleGeometry(1.15,2.25,8,16),cloudMaterial,[0,0,0]).rotation.z=Math.PI/2;[-1.3,-.55,.2,.95,1.55].forEach((n,i)=>puff(bed,n,.1+(i%2)*.18,(i%2?-.25:.22),.62,i===0?shadeMaterial:cloudMaterial));const tag=add(bed,new T.TorusGeometry(.72,.055,8,24),lavender,[0,.18,0]);tag.rotation.x=Math.PI/2;beds.push({x,z,worldY:root.position.y+.65})}
- makeBed(-8,-3);makeBed(0,5);makeBed(8,-2);
+ const starPalettes=[['#efaccd','#f6dc8e'],['#efaccd','#baa0e4'],['#87ace5','#b4e3f6'],['#b4ddcd','#f6dc8e'],['#baa0e4','#b4e3f6']];
+ starPalettes.forEach((colors,i)=>{const x=(i-2)*5.1,z=-2;const bed=createCloudBed(colors);bed.position.set(x,.65,z);root.add(bed);beds.push({x,z,worldY:root.position.y+.65})});
 
  const sun=new T.Group();sun.position.set(-13,15,-19);root.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#ffe6a1',emissive:'#ffd36a',emissiveIntensity:1}),[0,0,0]);const sunLight=new T.PointLight('#ffe4a1',8,40,2);sun.add(sunLight);
  const starGroup=new T.Group();root.add(starGroup);for(let i=0;i<90;i++){const x=-25+(i*37%50),y=5+(i*17%23),z=-28+(i*29%20);const star=add(starGroup,new T.SphereGeometry(.045+(i%3)*.025,7,6),new T.MeshBasicMaterial({color:'#fff5cb'}),[x,y,z]);star.userData.phase=i*.71}
