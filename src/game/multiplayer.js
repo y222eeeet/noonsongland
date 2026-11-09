@@ -10,21 +10,22 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  let lastAction='';
  let channel, identity, ready=false, lastSend=0, sequence=0, retryAt=0;
  function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>g.dispose());materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id)}
+ function createPeer(id){if(peers.has(id)||peers.size>=100)return peers.get(id);const mesh=createSongi();mesh.visible=false;scene.add(mesh);const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,missingSince:0};peers.set(id,peer);return peer}
  function label(name){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');ctx.font='bold 30px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=9;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,256,64);ctx.fillStyle='#5f5473';ctx.fillText(name,256,64);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.position.y=5.45;sprite.scale.set(3.5,.875,1);return sprite}
  function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);
-  const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)){peer.missingSince??=now;if(now-peer.missingSince>15000)remove(id)}else peer.missingSince=0;
-  for(const [id,m] of members)if(id!==connectionId&&!peers.has(id)&&peers.size<100){const mesh=createSongi();mesh.visible=false;scene.add(mesh);peers.set(id,{mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,missingSince:0})}
+  const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)){peer.missingSince??=now;if(now-peer.missingSince>60000)remove(id)}else peer.missingSince=0;
+  for(const [id] of members)if(id!==connectionId)createPeer(id)
   for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state);
 
  }
- function receive(s){if(!ready||!s||s.connectionId===connectionId)return;const peer=peers.get(s.connectionId);if(!peer||!Number.isSafeInteger(s.seq)||s.seq<=peer.seq)return;
-  if(![s.x,s.z,s.rotation,s.held].every(Number.isFinite)||s.x<bounds.minX||s.x>bounds.maxX||s.z<bounds.minZ||s.z>bounds.maxZ||!['idle','inhale','exhale'].includes(s.action))return;
+ function receive(s){if(!ready||!s||s.connectionId===connectionId)return;
+  if(![s.x,s.z,s.rotation,s.held].every(Number.isFinite)||s.x<bounds.minX||s.x>bounds.maxX||s.z<bounds.minZ||s.z>bounds.maxZ||!['idle','inhale','exhale'].includes(s.action))return;const peer=createPeer(s.connectionId);if(!peer||!Number.isSafeInteger(s.seq)||s.seq<=peer.seq)return;
   peer.seq=s.seq;peer.last=performance.now();peer.state={...s,held:Math.max(0,Math.min(s.held,120))};if(!peer.mesh.visible)peer.mesh.position.set(s.x,surfaceHeight(s.x,s.z)+.07,s.z);peer.mesh.visible=true;
  }
  async function connect(player){identity=player;ready=false;const old=channel;channel=null;if(old)await supabase.removeChannel(old);if(identity!==player)return;
   const current=supabase.channel('campus:main:v1',{config:{private:true,presence:{key:connectionId},broadcast:{self:false}}});channel=current;
   current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload));
-  current.subscribe(async state=>{if(channel!==current)return;if(state==='SUBSCRIBED'){ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(result!=='ok'){ready=false;retryAt=performance.now()+5000;return}sync();lastSend=0;}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state)){ready=false;for(const peer of peers.values())peer.mesh.visible=false;retryAt=performance.now()+5000;}});
+  current.subscribe(async state=>{if(channel!==current)return;if(state==='SUBSCRIBED'){ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(result!=='ok'){ready=false;retryAt=performance.now()+5000;return}sync();lastSend=0;}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state)){ready=false;retryAt=performance.now()+5000;}});
  }
  function update(dt,now){const player=window.noonsongPlayer;
   if(localAvatar&&player&&ownName!==player.displayName){if(ownLabel){localAvatar.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}ownName=player.displayName;ownLabel=label(ownName.slice(0,24));localAvatar.add(ownLabel);}
