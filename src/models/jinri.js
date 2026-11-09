@@ -25,7 +25,8 @@ export function addJinriHall(scene, obstacles, materials) {
   const canvas=document.createElement('canvas');canvas.width=768;canvas.height=160;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#fff8ed';ctx.fillRect(0,0,768,160);ctx.fillStyle='#655873';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 65px sans-serif';ctx.fillText('04 진리관',384,80);
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
-  const sign=make(new T.PlaneGeometry(5.4,1.12),new T.MeshBasicMaterial({map:texture}),0,11.65,2.87);sign.castShadow=false;
+  // Facade mullions reach z=2.87. Keep the entire sign in front of them.
+  const sign=make(new T.PlaneGeometry(5.4,1.12),new T.MeshBasicMaterial({map:texture}),0,11.65,3.02);sign.castShadow=false;sign.receiveShadow=false;
   obstacles.push({x:-51,z:-27,w:14,h:4.1});
   return {minX:-44,maxX:24,minZ:-36,maxZ:18};
 }
