@@ -1,8 +1,10 @@
 import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
+import { daylightAt } from './day-night.js';
 export function createGuestbook(scene,camera,renderer,obstacles){
  const board=new T.Group();board.position.set(-46.9,10.78,7);scene.add(board);
- const add=(g,c,x,y,z)=>{const m=new T.Mesh(g,new T.MeshStandardMaterial({color:c,roughness:.85}));m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;board.add(m);return m;};
+ const boardMaterials=[];
+ const add=(g,c,x,y,z)=>{const material=new T.MeshStandardMaterial({color:c,roughness:.85});boardMaterials.push({material,day:new T.Color(c)});const m=new T.Mesh(g,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;board.add(m);return m;};
  add(new T.BoxGeometry(.30,6,24),'#a78cc0',0,3.8,0);
  for(const z of [-10,0,10])add(new T.BoxGeometry(.22,1,.22),'#766477',0,.5,z);
  const art=document.createElement('canvas');art.width=4096;art.height=1024;
@@ -29,8 +31,11 @@ export function createGuestbook(scene,camera,renderer,obstacles){
  papers.forEach(([x,y,w,h,angle],i)=>paper(x,y,w,h,angle,i));
  const texture=new T.CanvasTexture(art);texture.colorSpace=T.SRGBColorSpace;
  // Front faces Myungshin (west); the east-facing back is plain cork.
- const front=new T.Mesh(new T.PlaneGeometry(23.5,5.5),new T.MeshBasicMaterial({map:texture}));front.rotation.y=-Math.PI/2;front.position.set(-.16,3.8,0);board.add(front);
- const back=new T.Mesh(new T.PlaneGeometry(23.5,5.5),new T.MeshStandardMaterial({color:'#cda988',roughness:.95}));back.rotation.y=Math.PI/2;back.position.set(.16,3.8,0);board.add(back);
+ const paperMaterial=new T.MeshBasicMaterial({map:texture,color:'#ffffff'});
+ const backMaterial=new T.MeshStandardMaterial({color:'#cda988',roughness:.95});
+ const front=new T.Mesh(new T.PlaneGeometry(23.5,5.5),paperMaterial);front.rotation.y=-Math.PI/2;front.position.set(-.16,3.8,0);board.add(front);
+ boardMaterials.push({material:backMaterial,day:new T.Color('#cda988')});
+ const back=new T.Mesh(new T.PlaneGeometry(23.5,5.5),backMaterial);back.rotation.y=Math.PI/2;back.position.set(.16,3.8,0);board.add(back);
  obstacles.push({x:-46.9,z:7,w:.25,h:12.2});
  const style=document.createElement('style');style.textContent=`.guestbook{width:min(92vw,600px);max-height:88dvh;border:0;border-radius:24px;padding:24px;background:#fffaf4;color:#554661;box-shadow:0 20px 80px #20132a66}.guestbook::backdrop{background:#24203799}.guestbook header{display:flex;align-items:center;justify-content:space-between}.guestbook button{border:0;border-radius:12px;background:#e9dff2;color:#51405e;padding:10px 16px;font:inherit;cursor:pointer}.guestbook input,.guestbook textarea{box-sizing:border-box;width:100%;border:1px solid #d8ccdf;border-radius:12px;padding:10px;margin:6px 0;font:inherit;background:white;color:#493c53}.guestbook canvas{width:100%;background:white;border:1px solid #d8ccdf;border-radius:12px;touch-action:none}.guestbook article{border-top:1px solid #e6dce9;padding:16px 0}.guestbook article p{white-space:pre-wrap;overflow-wrap:anywhere}.guestbook article img{max-width:100%;border-radius:12px}.guestbook .tools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.guestbook [role=status]{min-height:24px}.guestbook h2{margin:0}.guestbook h3{margin-bottom:8px}`;document.head.append(style);
  const dialog=document.createElement('dialog');dialog.className='guestbook';dialog.innerHTML=`<header><h2>방명록을 남겨주세요</h2><button type="button" data-close aria-label="방명록 닫기">닫기</button></header><div role="status" aria-live="polite"></div><h3>방명록 남기기</h3><form><input name="name" maxlength="24" placeholder="닉네임 (선택)" aria-label="닉네임"><textarea name="text" maxlength="500" rows="3" placeholder="오늘의 한마디를 적어주세요 (500자 이내)" aria-label="방명록 내용"></textarea><canvas width="480" height="240" aria-label="그림 방명록 그리기"></canvas><div class="tools"><label>펜 색 <input type="color" value="#8065aa" aria-label="펜 색" style="width:44px;padding:2px"></label><button type="button" data-clear>그림 지우기</button><button type="submit">남기기</button></div></form><section data-list></section>`;document.body.append(dialog);
@@ -52,5 +57,16 @@ export function createGuestbook(scene,camera,renderer,obstacles){
  const ray=new T.Raycaster(),mouse=new T.Vector2();let press=null;
  renderer.domElement.addEventListener('pointerdown',e=>press=[e.clientX,e.clientY]);
  renderer.domElement.addEventListener('pointerup',e=>{if(!press||Math.hypot(e.clientX-press[0],e.clientY-press[1])>8)return;const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(scene.children,true)[0];if(hit&&board.getObjectById(hit.object.id))open();});
- return {isOpen:()=>dialog.open,open};
+ // CanvasTexture papers are intentionally unlit, so tint them at night to keep the
+ // notice board readable without looking like a glowing light source.
+ const dayPaper=new T.Color('#ffffff'),nightPaper=new T.Color('#756d7c'),nightBoard=new T.Color('#68667a');
+ const updateTheme=timestamp=>{
+  const day=daylightAt(timestamp);
+  paperMaterial.color.copy(nightPaper).lerp(dayPaper,day);
+  for(const {material,day:dayColor} of boardMaterials){material.color.copy(nightBoard).lerp(dayColor,day);material.emissive.set('#000000');material.emissiveIntensity=0;}
+ };
+ updateTheme(Date.now());
+ const themeLoop=()=>{updateTheme(Date.now());requestAnimationFrame(themeLoop);};
+ themeLoop();
+ return {isOpen:()=>dialog.open,open,updateTheme};
 }
