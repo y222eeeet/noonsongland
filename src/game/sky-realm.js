@@ -1,6 +1,6 @@
 import * as T from 'three';
 import { createCloudBed } from '../models/cloud-bed.js';
-import { createSongiRug, rugContains, RUG_TOP } from '../models/songi-rug.js';
+import { createSongiRug, RUG_TOP } from '../models/songi-rug.js';
 
 const isDaytime=timestamp=>{const hour=new Date(timestamp).getHours();return hour>=6&&hour<18};
 // Shared by local and remote animation so every Song-i rolls on the same rug.
@@ -14,6 +14,7 @@ export function getSkyRollFrame(startedAt,now=Date.now()){
 
 export function createSkyRealm(scene){
  const root=new T.Group();root.position.y=52;root.visible=false;scene.add(root);
+ const floorY=52.18;
  const cloudMaterial=new T.MeshStandardMaterial({color:'#fff8f3',roughness:.9});
  const shadeMaterial=new T.MeshStandardMaterial({color:'#ded5f5',roughness:.88});
  const lavender=new T.MeshStandardMaterial({color:'#bda7e3',roughness:.88});
@@ -38,10 +39,14 @@ export function createSkyRealm(scene){
  // count preserves the soft low-poly silhouette while cutting most of the
  // transition-time GPU work.
  const cloudGeometry=new T.SphereGeometry(1,8,6),cloudTransform=new T.Object3D();
+ // Keep the two rug areas cloud-free.  The rugs sit on the same walkable
+ // floor as the rest of the realm, rather than floating over cloud lobes.
+ const isRugFootprint=(x,z)=>[-30,SKY_ROLL_ZONE.x].some(rugX=>Math.abs(x-rugX)<12.2&&Math.abs(z)<16.2);
  for(const layer of [{step:2.7,y:-1.30,r:2.18},{step:1.7,y:-.65,r:1.42}]){
   const lobes=[];
   for(let row=0,z=-30;z<=30;row++,z+=layer.step)for(let col=0,x=-40;x<=40;col++,x+=layer.step){
    const seed=row*19.17+col*7.31,v=(Math.sin(seed)+1)/2;
+   if(isRugFootprint(x+(row%2)*layer.step*.5,z))continue;
    lobes.push({x:x+(row%2)*layer.step*.5+Math.sin(seed*2.3)*.28,z:z+Math.cos(seed*1.7)*.26,y:layer.y+Math.sin(seed*1.3)*.08,r:layer.r*(.88+v*.22),v});
   }
   const carpet=new T.InstancedMesh(cloudGeometry,cloudMaterial,lobes.length);carpet.name='cloud-carpet';
@@ -66,11 +71,13 @@ export function createSkyRealm(scene){
  // Two oversized Song-i rugs frame the bed field. They keep the original
  // face-and-snowflake silhouette, simply enlarged and turned sideways.
  const rugScale=2.35;
- const leftRug=createSongiRug();leftRug.name='left-songi-rug';leftRug.position.set(-30,0,0);leftRug.rotation.y=Math.PI/2;leftRug.scale.setScalar(rugScale);root.add(leftRug);
- const rollZone=createSongiRug();rollZone.name='right-songi-roll-rug';rollZone.position.set(SKY_ROLL_ZONE.x,0,SKY_ROLL_ZONE.z);rollZone.rotation.y=Math.PI/2;rollZone.scale.setScalar(rugScale);root.add(rollZone);
- // The rug is enlarged as a whole, so its raised surface scales upward too.
- // Keep Song-i's rolling center on that visible top surface, never inside it.
- const surfaceHeightAt=(x,z)=>rugContains(x-SKY_ROLL_ZONE.x,z-SKY_ROLL_ZONE.z)?root.position.y+RUG_TOP*rugScale:52.18;
+ // Lower the enlarged model so its visible upper face is exactly flush with
+ // the sky-realm floor.  The carpet cutout above prevents cloud lobes from
+ // showing through the rug from below.
+ const rugBaseY=(floorY-root.position.y)-RUG_TOP*rugScale;
+ const leftRug=createSongiRug();leftRug.name='left-songi-rug';leftRug.position.set(-30,rugBaseY,0);leftRug.rotation.y=Math.PI/2;leftRug.scale.setScalar(rugScale);root.add(leftRug);
+ const rollZone=createSongiRug();rollZone.name='right-songi-roll-rug';rollZone.position.set(SKY_ROLL_ZONE.x,rugBaseY,SKY_ROLL_ZONE.z);rollZone.rotation.y=Math.PI/2;rollZone.scale.setScalar(rugScale);root.add(rollZone);
+ const surfaceHeightAt=(x,z)=>floorY;
 
  const dayGroup=new T.Group();root.add(dayGroup);
  const sun=new T.Group();sun.position.set(-13,15,-19);dayGroup.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#fff0ac',emissive:'#ffd36a',emissiveIntensity:1.25}),[0,0,0]);const sunLight=new T.PointLight('#ffe7a5',15,58,2);sun.add(sunLight);
@@ -92,5 +99,5 @@ export function createSkyRealm(scene){
 
  let lastTheme='';
  function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;dayGroup.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#f2f7ff':'#151a35');skyMaterial.color.set(day?'#aee2ff':'#10162f')}if(starGroup.visible)stars.material.opacity=.72+.20*Math.sin(timestamp*.002);ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
- return {root,portal,beds,bedOrder,rollZone:SKY_ROLL_ZONE,floorY:52.18,surfaceHeightAt,update,enter(){root.visible=true;portal.visible=false},leave(){root.visible=false;portal.visible=true}};
+ return {root,portal,beds,bedOrder,rollZone:SKY_ROLL_ZONE,floorY,surfaceHeightAt,update,enter(){root.visible=true;portal.visible=false},leave(){root.visible=false;portal.visible=true}};
 }
