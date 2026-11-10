@@ -21,9 +21,9 @@ export function createSkyRealm(scene){
  // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
  // Instancing keeps the denser cloud carpet to two draw calls.
  const cloudGeometry=new T.SphereGeometry(1,20,14),cloudTransform=new T.Object3D();
- for(const layer of [{step:2.5,y:-1.30,r:2.05},{step:1.55,y:-.65,r:1.35}]){
+ for(const layer of [{step:2.7,y:-1.30,r:2.18},{step:1.7,y:-.65,r:1.42}]){
   const lobes=[];
-  for(let row=0,z=-12;z<=12;row++,z+=layer.step)for(let col=0,x=-14;x<=14;col++,x+=layer.step){
+  for(let row=0,z=-24;z<=24;row++,z+=layer.step)for(let col=0,x=-27;x<=27;col++,x+=layer.step){
    const seed=row*19.17+col*7.31,v=(Math.sin(seed)+1)/2;
    lobes.push({x:x+(row%2)*layer.step*.5+Math.sin(seed*2.3)*.28,z:z+Math.cos(seed*1.7)*.26,y:layer.y+Math.sin(seed*1.3)*.08,r:layer.r*(.88+v*.22),v});
   }
@@ -32,11 +32,19 @@ export function createSkyRealm(scene){
   lobes.forEach((lobe,i)=>{cloudTransform.position.set(lobe.x,lobe.y,lobe.z);cloudTransform.scale.set(lobe.r,lobe.r*(.78+lobe.v*.08),lobe.r*(.92+lobe.v*.12));cloudTransform.updateMatrix();carpet.setMatrixAt(i,cloudTransform.matrix);color.copy(cloudMaterial.color).lerp(shadeMaterial.color,lobe.v*.12);carpet.setColorAt(i,color)});
   carpet.castShadow=carpet.receiveShadow=false;root.add(carpet);
  }
- const rim=new T.Mesh(new T.TorusGeometry(15.2,.18,10,48),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
+ const rim=new T.Mesh(new T.TorusGeometry(30,.18,10,64),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
 
  const beds=[];
  const starPalettes=[['#efaccd','#f6dc8e'],['#efaccd','#baa0e4'],['#87ace5','#b4e3f6'],['#b4ddcd','#f6dc8e'],['#baa0e4','#b4e3f6']];
- starPalettes.forEach((colors,i)=>{const x=(i-2)*5.1,z=-2;const bed=createCloudBed(colors);bed.position.set(x,.65,z);root.add(bed);beds.push({x,z,worldY:root.position.y+.65})});
+ for(let row=0;row<5;row++)for(let col=0;col<6;col++){
+  const i=row*6+col,seed=i*5.713+row*2.19,x=(col-2.5)*4.35+Math.sin(seed)*.34,z=(row-2)*4.85+Math.cos(seed*1.37)*.38;
+  const bed=createCloudBed(starPalettes[i%starPalettes.length]);
+  // A small deterministic offset removes the rigid grid, while keeping every
+  // pillow generally pointed toward the same calm, northern direction.
+  bed.position.set(x,.65,z);bed.rotation.y=Math.sin(seed*1.91)*.10;root.add(bed);
+  beds.push({x,z,worldY:root.position.y+.65,rotationY:bed.rotation.y});
+ }
+ const bedOrder=[];for(let row=0;row<5;row++)bedOrder.push(...[2,1,3,0,4,5].map(column=>row*6+column));
 
  const sun=new T.Group();sun.position.set(-13,15,-19);root.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#ffe6a1',emissive:'#ffd36a',emissiveIntensity:1}),[0,0,0]);const sunLight=new T.PointLight('#ffe4a1',8,40,2);sun.add(sunLight);
  const starGroup=new T.Group();root.add(starGroup);for(let i=0;i<90;i++){const x=-25+(i*37%50),y=5+(i*17%23),z=-28+(i*29%20);const star=add(starGroup,new T.SphereGeometry(.045+(i%3)*.025,7,6),new T.MeshBasicMaterial({color:'#fff5cb'}),[x,y,z]);star.userData.phase=i*.71}
@@ -50,5 +58,5 @@ export function createSkyRealm(scene){
 
  let lastTheme='';
  function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;sun.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#e7edf8':'#151a35')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
- return {root,portal,beds,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
+ return {root,portal,beds,bedOrder,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
 }
