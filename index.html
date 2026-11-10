@@ -14,7 +14,7 @@ import { createDayNight } from './src/game/day-night.js';
 import { createCigarettePack } from './src/models/cigarette-pack.js';
 import { createMultiplayer } from './src/game/multiplayer.js';
 import { createSongi } from './src/models/songi.js';
-import { createSkyRealm } from './src/game/sky-realm.js';
+import { createSkyRealm, getSkyRollFrame } from './src/game/sky-realm.js';
 import { createBedMotion } from './src/game/bed-motion.js';
 import { createTraversal } from './src/game/traversal.js';
 import { addJinriHall } from './src/models/jinri.js';
@@ -182,7 +182,7 @@ renderer.render=(activeScene,activeCamera)=>{
    const bed=skyRealm.beds[skyBedIndex];
    if(bed){p.position.set(bed.x,bed.worldY+.84,bed.z+2.25);p.rotation.set(-Math.PI/2,bed.rotationY||0,0)}else p.rotation.set(-Math.PI/2,0,0)
   }else if(skyPose==='roll'){
-   const now=performance.now(),duration=1500,travel=4.6,leg=Math.floor(now/duration)%4,progress=(now%duration)/duration,direction=[1,-1,-1,1][leg],start=[0,travel,0,-travel][leg],end=[travel,0,-travel,0][leg];
+   const travel=4.6,frame=getSkyRollFrame(p.userData.skyRollStartedAt),direction=[1,-1,-1,1][frame.leg],start=[0,travel,0,-travel][frame.leg],end=[travel,0,-travel,0][frame.leg],progress=frame.progress;
    p.rotation.set(-Math.PI/2,0,0);p.rotateY(direction*progress*Math.PI*2);
    rollCenter.set(skyRealm.rollZone.x+start+(end-start)*progress,skyRealm.floorY+.72,skyRealm.rollZone.z);
    p.position.copy(rollCenter).sub(rollOffset.set(0,2.25,0).applyQuaternion(p.quaternion));

@@ -2,7 +2,7 @@ import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
 import { createSongi } from '../models/songi.js';
 import { createRemoteActions } from './remote-actions.js';
-import { SKY_ROLL_ZONE } from './sky-realm.js';
+import { SKY_ROLL_ZONE, getSkyRollFrame } from './sky-realm.js';
 
 // Ephemeral movement and social interactions are broadcast, never written to the database.
 export function createMultiplayer(scene, readState, surfaceHeight, bounds, localAvatar) {
@@ -46,7 +46,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   const applyPose=()=>{
    const state=peer.state;
    if(state?.realm==='sky'&&state.skyPose==='roll'){
-    const elapsed=Math.max(0,Date.now()-(Number.isFinite(state.skyRollStartedAt)?state.skyRollStartedAt:Date.now())),duration=1500,travel=4.6,leg=Math.floor(elapsed/duration)%4,progress=(elapsed%duration)/duration,direction=[1,-1,-1,1][leg],start=[0,travel,0,-travel][leg],end=[travel,0,-travel,0][leg];
+    const frame=getSkyRollFrame(state.skyRollStartedAt),travel=4.6,direction=[1,-1,-1,1][frame.leg],start=[0,travel,0,-travel][frame.leg],end=[travel,0,-travel,0][frame.leg],progress=frame.progress;
     mesh.rotation.set(-Math.PI/2,0,0);mesh.rotateY(direction*progress*Math.PI*2);
     rollCenter.set(SKY_ROLL_ZONE.x+start+(end-start)*progress,surfaceHeight(SKY_ROLL_ZONE.x,SKY_ROLL_ZONE.z,'sky')+.72,SKY_ROLL_ZONE.z);
     mesh.position.copy(rollCenter).sub(rollOffset.set(0,2.25,0).applyQuaternion(mesh.quaternion))
