@@ -6,7 +6,7 @@ const isDaytime=timestamp=>{const hour=new Date(timestamp).getHours();return hou
 // Shared by local and remote animation so every Song-i rolls on the same rug.
 export const SKY_ROLL_ZONE={x:30,z:0};
 export const SKY_ROLL_DURATION=1900;
-export const SKY_ROLL_PAUSE=1000;
+export const SKY_ROLL_PAUSE=500;
 export function getSkyRollFrame(startedAt,now=Date.now()){
  const elapsed=Math.max(0,now-(Number.isFinite(startedAt)?startedAt:now)),cycle=SKY_ROLL_DURATION+SKY_ROLL_PAUSE,leg=Math.floor(elapsed/cycle)%4,phase=elapsed%cycle;
  return {leg,progress:Math.min(1,phase/SKY_ROLL_DURATION),paused:phase>=SKY_ROLL_DURATION};
