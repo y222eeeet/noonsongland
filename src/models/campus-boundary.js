@@ -17,5 +17,15 @@ export function extendSmokingBoundary(scene,obstacles,M){
   mesh(new T.BoxGeometry(.12,.12,length),M.lav,x,ROUTES.upper+1.6,(z0+z1)/2);
   obstacles.push({x,z:(z0+z1)/2,w:.15,h:length/2});
  }
+ const wood=new T.MeshStandardMaterial({color:'#ad8875',roughness:.85});
+ for(const z of [26,33,40])for(const [x,rotation] of [[-92,Math.PI/2],[-79,-Math.PI/2]]){
+  const bench=new T.Group();bench.name='saehim-smoking-bench';bench.position.set(x,ROUTES.upper,z);bench.rotation.y=rotation;group.add(bench);
+  for(const [geometry,material,position] of [
+   [new T.BoxGeometry(2.7,.18,.65),wood,[0,.72,0]],
+   [new T.BoxGeometry(2.7,.72,.14),M.lav,[0,1.1,-.31]],
+   ...[-1,1].map(side=>[new T.BoxGeometry(.15,.66,.45),M.dark,[side,.33,0]])
+  ]){const part=new T.Mesh(geometry,material);part.position.set(...position);part.castShadow=part.receiveShadow=true;bench.add(part)}
+  obstacles.push({x,z,w:.55,h:1.5});
+ }
  return group;
 }
