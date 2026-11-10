@@ -145,8 +145,18 @@ function findSwimEntry(point){
  }
  return direct;
 }
+function findSwimExit(x,z){
+ // Walk outward from the water in small rings.  Only a registered, walkable
+ // campus surface can be selected, so leaving never places Song-i in a pond
+ // tile that the normal movement rules immediately reject.
+ for(let radius=1.1;radius<=16;radius+=.65)for(let step=0;step<24;step++){
+  const angle=step/24*Math.PI*2,candidate={x:x+Math.cos(angle)*radius,z:z+Math.sin(angle)*radius};
+  if(!insidePond(candidate.x,candidate.z)&&traversal.canOccupy(candidate.x,candidate.z,worldBounds)&&!hit(candidate.x,candidate.z))return candidate;
+ }
+ return {x:0,z:8};
+}
 function enterSwim(){if(!swimPoint||swimming)return;if(sittingBench)standFromBench?.();if(smokeMode)leaveSmokeMode();if(sighMode)leaveSighMode();const entry=findSwimEntry(swimPoint);if(!insidePond(entry.x,entry.z)||onStoneBridge(entry.x,entry.z)){multiplayer?.toast?.('물 위에 자리가 생기면 입수할 수 있어요.');return}swimming=true;swimEntry={x:entry.x,z:entry.z};swimDiveStarted=performance.now();swimEnteredAt=Date.now();swimOrientation=entry.order%2===0?Math.PI/2:Math.PI*1.5;p.position.set(entry.x,.18,entry.z);p.userData.groundY=-.12;setSwimUi(true);snapCamera=true;multiplayer?.flush?.()}
-function leaveSwim(){if(!swimming)return;swimming=false;swimEntry=null;swimEnteredAt=0;p.rotation.set(0,Math.PI,0);p.position.y=surfaceHeight(p.position.x,p.position.z)+.07;p.userData.groundY=p.position.y;setSwimUi(false);snapCamera=true;multiplayer?.flush?.()}
+function leaveSwim(){if(!swimming)return;const exit=findSwimExit(p.position.x,p.position.z);swimming=false;swimEntry=null;swimEnteredAt=0;p.position.set(exit.x,surfaceHeight(exit.x,exit.z)+.07,exit.z);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSwimUi(false);snapCamera=true;multiplayer?.flush?.()}
 swimButton.addEventListener('click',enterSwim);swimExitButton.addEventListener('click',leaveSwim);
 const swimRay=new T.Raycaster(),swimPointer=new T.Vector2();let swimPress=null;
 renderer.domElement.addEventListener('pointerdown',event=>{swimPress=[event.clientX,event.clientY]});
