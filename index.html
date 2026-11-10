@@ -106,7 +106,7 @@ addCampusFurniture(scene,col,M);
 const worldFloor=unifyWorldFloors(scene,M);
 const guestbook=createGuestbook(scene,camera,renderer,col);
 function surfaceHeight(x,z,realm){
- if(realm==='sky'||(realm===undefined&&skyMode))return skyRealm.floorY;
+ if(realm==='sky'||(realm===undefined&&skyMode))return skyRealm.surfaceHeightAt(x,z);
  return traversal.heightAt(x,z);
 }
 // Continuous beveled Songi avatar, shared front and rear geometry.
@@ -178,7 +178,7 @@ const rollCenter=new T.Vector3(),rollOffset=new T.Vector3(),rollCameraLook=new T
 renderer.render=(activeScene,activeCamera)=>{
  skyRealm.update(Date.now());
  if(skyMode){
-  document.querySelector('#name').textContent='☁ 하늘나라 · 구름쉼터';p.position.y=skyRealm.floorY;
+  document.querySelector('#name').textContent='☁ 하늘나라 · 구름쉼터';p.position.y=skyRealm.surfaceHeightAt(p.position.x,p.position.z);
   if(bedMotion.active){bedMotion.update(performance.now())}
   else if(skyPose==='sleep'){
    const bed=skyRealm.beds[skyBedIndex];
@@ -186,7 +186,7 @@ renderer.render=(activeScene,activeCamera)=>{
   }else if(skyPose==='roll'){
    const travel=4.6,frame=getSkyRollFrame(p.userData.skyRollStartedAt),direction=[1,-1,-1,1][frame.leg],start=[0,travel,0,-travel][frame.leg],end=[travel,0,-travel,0][frame.leg],progress=frame.progress;
    p.rotation.set(-Math.PI/2,0,0);p.rotateY(direction*progress*Math.PI*2);
-   rollCenter.set(skyRealm.rollZone.x+start+(end-start)*progress,skyRealm.floorY+.72,skyRealm.rollZone.z);
+   rollCenter.set(skyRealm.rollZone.x+start+(end-start)*progress,skyRealm.surfaceHeightAt(skyRealm.rollZone.x,skyRealm.rollZone.z)+.72,skyRealm.rollZone.z);
    p.position.copy(rollCenter).sub(rollOffset.set(0,2.25,0).applyQuaternion(p.quaternion));
    activeCamera.position.set(rollCenter.x,skyRealm.floorY+21,skyRealm.rollZone.z+17);
    rollCameraLook.set(rollCenter.x,skyRealm.floorY+1.6,skyRealm.rollZone.z);activeCamera.lookAt(rollCameraLook)
