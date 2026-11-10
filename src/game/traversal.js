@@ -33,7 +33,7 @@ export function createTraversal(){
   if(upperAreaAt(x,z))return 10.78;
   return 0;
  }
- function canOccupy(x,z,bounds){if(insidePond(x,z)&&!onStoneBridge(x,z)&&heightAt(x,z)<2)return false;return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
+ function canOccupy(x,z,bounds){if(insidePond(x,z)&&!onStoneBridge(x,z)&&pondWalkHeight(x,z)===null&&heightAt(x,z)<2)return false;return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
  function canStep(fromX,fromZ,toX,toZ,bounds){
   if(!canOccupy(toX,toZ,bounds))return false;
   const fromStair=stairZoneAt(fromX,fromZ),toStair=stairZoneAt(toX,toZ);
