@@ -9,6 +9,7 @@ export function createSkyRealm(scene){
  const shadeMaterial=new T.MeshStandardMaterial({color:'#ded5f5',roughness:.88});
  const lavender=new T.MeshStandardMaterial({color:'#bda7e3',roughness:.88});
  const worldBaseMaterial=new T.MeshBasicMaterial({color:'#e7edf8'});
+ const skyMaterial=new T.MeshBasicMaterial({color:'#aee2ff',side:T.BackSide});
  // The sky realm is intentionally soft and weightless: no ground or object shadows.
  const add=(parent,geometry,material,position)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(...position);mesh.castShadow=false;mesh.receiveShadow=false;parent.add(mesh);return mesh};
  function puff(parent,x,y,z,scale=1,material=cloudMaterial){const mesh=add(parent,new T.SphereGeometry(.9,16,12),material,[x,y,z]);mesh.scale.set(1.25*scale,.7*scale,scale);return mesh}
@@ -17,6 +18,10 @@ export function createSkyRealm(scene){
  // through gaps in the decorative cloud puffs: this is a separate sky world.
  const worldBase=new T.Mesh(new T.CircleGeometry(180,64),worldBaseMaterial);
  worldBase.rotation.x=-Math.PI/2;worldBase.position.y=-3.1;worldBase.castShadow=worldBase.receiveShadow=false;root.add(worldBase);
+ // A separate sky dome makes this feel like its own world, rather than a view
+ // onto the campus sky. It changes independently with the sky-realm theme.
+ const skyDome=new T.Mesh(new T.SphereGeometry(82,32,20),skyMaterial);
+ skyDome.position.y=24;skyDome.castShadow=skyDome.receiveShadow=false;root.add(skyDome);
 
  // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
  // Instancing keeps the denser cloud carpet to two draw calls.
@@ -46,7 +51,11 @@ export function createSkyRealm(scene){
  }
  const bedOrder=[];for(let row=0;row<5;row++)bedOrder.push(...[2,1,3,0,4,5].map(column=>row*6+column));
 
- const sun=new T.Group();sun.position.set(-13,15,-19);root.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#ffe6a1',emissive:'#ffd36a',emissiveIntensity:1}),[0,0,0]);const sunLight=new T.PointLight('#ffe4a1',8,40,2);sun.add(sunLight);
+ const dayGroup=new T.Group();root.add(dayGroup);
+ const sun=new T.Group();sun.position.set(-13,15,-19);dayGroup.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#fff0ac',emissive:'#ffd36a',emissiveIntensity:1.25}),[0,0,0]);const sunLight=new T.PointLight('#ffe7a5',15,58,2);sun.add(sunLight);
+ const rainbow=new T.Group();rainbow.position.set(0,4,-31);dayGroup.add(rainbow);
+ const rainbowColors=['#f5a9b9','#f6ca91','#f7e9a0','#b9dfa9','#acd9ee','#c7b4e8'];
+ rainbowColors.forEach((color,index)=>{const radius=15.2-index*.58,points=[];for(let step=0;step<=24;step++){const angle=Math.PI*.14+(Math.PI*.72*step/24);points.push(new T.Vector3(Math.cos(angle)*radius,Math.sin(angle)*radius,0))}const arc=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),24,.105,6,false),new T.MeshBasicMaterial({color,transparent:true,opacity:.33}));arc.castShadow=arc.receiveShadow=false;rainbow.add(arc)});
  const starGroup=new T.Group();root.add(starGroup);for(let i=0;i<90;i++){const x=-25+(i*37%50),y=5+(i*17%23),z=-28+(i*29%20);const star=add(starGroup,new T.SphereGeometry(.045+(i%3)*.025,7,6),new T.MeshBasicMaterial({color:'#fff5cb'}),[x,y,z]);star.userData.phase=i*.71}
  const moon=add(starGroup,new T.SphereGeometry(1.35,16,12),new T.MeshBasicMaterial({color:'#fff3dc'}),[13,16,-22]);
 
@@ -57,6 +66,6 @@ export function createSkyRealm(scene){
  portal.traverse(object=>object.userData.skyPortal=true);
 
  let lastTheme='';
- function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;sun.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#e7edf8':'#151a35')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
+ function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;dayGroup.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#f2f7ff':'#151a35');skyMaterial.color.set(day?'#aee2ff':'#10162f')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
  return {root,portal,beds,bedOrder,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
 }
