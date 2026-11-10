@@ -59,7 +59,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
     const enteredAt=Number.isFinite(state.swimEnteredAt)?state.swimEnteredAt:Date.now();
     const dive=Math.min(1,Math.max(0,(Date.now()-enteredAt)/620)),ease=dive*dive*(3-2*dive);
     const frame=orbitFrame(state);
-    mesh.position.set(frame.x,.18-.30*ease,frame.z);
+    mesh.position.set(frame.x,.18-.38*ease,frame.z);
     mesh.rotation.set(-Math.PI/2*(.30+.70*ease),0,frame.roll);
     const parts=mesh.userData.parts;parts.arm0.rotation.x=.34;parts.arm1.rotation.x=-.34;parts.leg0.rotation.x=.72;parts.leg1.rotation.x=.72;
    }else{mesh.rotation.x=0;mesh.rotation.z=0}
