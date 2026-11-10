@@ -27,14 +27,13 @@ export function addCampusPond(scene,M){
  }
  // Broaden the landing into the side road, with clipped corners and a cream edge.
  const courtShape=new T.Shape();COURT_OUTLINE.forEach(([x,z],i)=>i?courtShape.lineTo(x,-z):courtShape.moveTo(x,-z));courtShape.closePath();
- const court=new T.Mesh(new T.ExtrudeGeometry(courtShape,{depth:.16,bevelEnabled:false}),M.path);court.name='expanded-stair-courtyard';court.rotation.x=-Math.PI/2;court.position.y=.02;court.receiveShadow=true;root.add(court);
+ const court=new T.Mesh(new T.ExtrudeGeometry(courtShape,{depth:.16,bevelEnabled:false}),M.path);court.name='expanded-stair-courtyard';court.rotation.x=-Math.PI/2;court.position.y=-.11;court.receiveShadow=true;root.add(court);
  const trim=new T.MeshStandardMaterial({color:'#fff6e6',roughness:.92});
- function border(a,b){const length=Math.hypot(b[0]-a[0],b[1]-a[1]),edge=box(length,.12,.18,trim,(a[0]+b[0])/2,.20,(a[1]+b[1])/2);edge.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]);}
+ function border(a,b){const length=Math.hypot(b[0]-a[0],b[1]-a[1]),edge=box(length,.12,.18,trim,(a[0]+b[0])/2,.07,(a[1]+b[1])/2);edge.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]);}
  // Keep the side-road opening, the stair foot, and the bridge entrance unobstructed.
- border(COURT_OUTLINE[0],COURT_OUTLINE[1]);
- for(const [i,j] of [[3,4],[4,5],[5,6],[7,8]])border(COURT_OUTLINE[i],COURT_OUTLINE[j]);
- border([B.x0-.16,10.9],COURT_OUTLINE[7]);
- border(COURT_OUTLINE[8],[-11.4,4.5]);
+ border([7.15,5.72],COURT_OUTLINE[2]);
+ border([B.x0-.16,10.9],COURT_OUTLINE[3]);
+ for(const [i,j] of [[3,4],[4,5]])border(COURT_OUTLINE[i],COURT_OUTLINE[j]);
  // Low banks outline the pond but leave both bridge approaches open.
  for(let i=0;i<POND_OUTLINE.length;i++){
   const a=POND_OUTLINE[i],b=POND_OUTLINE[(i+1)%POND_OUTLINE.length],length=Math.hypot(b[0]-a[0],b[1]-a[1]),count=Math.ceil(length/1.7);
