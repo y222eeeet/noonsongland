@@ -54,6 +54,14 @@ export function createSkyRealm(scene){
   lobes.forEach((lobe,i)=>{cloudTransform.position.set(lobe.x,lobe.y,lobe.z);cloudTransform.scale.set(lobe.r,lobe.r*(.78+lobe.v*.08),lobe.r*(.92+lobe.v*.12));cloudTransform.updateMatrix();carpet.setMatrixAt(i,cloudTransform.matrix);color.copy(cloudMaterial.color).lerp(shadeMaterial.color,lobe.v*.12);carpet.setColorAt(i,color)});
   carpet.castShadow=carpet.receiveShadow=false;root.add(carpet);
  }
+ // The rugs need a calm, flat footing rather than cloud lobes underneath,
+ // but the lobe cutouts above must never expose the night sky.  These pads
+ // seal each cutout all the way to its rectangular edge.
+ for(const x of [-30,SKY_ROLL_ZONE.x]){
+  const pad=new T.Mesh(new T.PlaneGeometry(25.2,33.2),cloudMaterial);
+  pad.name='sealed-rug-cloud-floor';pad.rotation.x=-Math.PI/2;pad.position.set(x,-.045,0);
+  pad.castShadow=pad.receiveShadow=false;root.add(pad);
+ }
  const rim=new T.Mesh(new T.TorusGeometry(44,.18,10,64),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
 
  const beds=[];
