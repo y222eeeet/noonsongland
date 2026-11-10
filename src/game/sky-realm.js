@@ -34,7 +34,10 @@ export function createSkyRealm(scene){
 
  // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
  // Instancing keeps the denser cloud carpet to two draw calls.
- const cloudGeometry=new T.SphereGeometry(1,20,14),cloudTransform=new T.Object3D();
+ // The carpet contains thousands of overlapping lobes. Its lower segment
+ // count preserves the soft low-poly silhouette while cutting most of the
+ // transition-time GPU work.
+ const cloudGeometry=new T.SphereGeometry(1,12,8),cloudTransform=new T.Object3D();
  for(const layer of [{step:2.7,y:-1.30,r:2.18},{step:1.7,y:-.65,r:1.42}]){
   const lobes=[];
   for(let row=0,z=-30;z<=30;row++,z+=layer.step)for(let col=0,x=-40;x<=40;col++,x+=layer.step){

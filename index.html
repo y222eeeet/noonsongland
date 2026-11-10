@@ -69,6 +69,10 @@ function lamp(x,z){const g=new T.Group();g.position.set(x,0,z);scene.add(g);q(ne
 const clouds=[];function cloud(x,y,z,s){const g=new T.Group();g.position.set(x,y,z);g.scale.setScalar(s);scene.add(g);[[0,0,0,.9],[-.8,-.1,.1,.65],[.72,-.12,.1,.68],[.15,.4,0,.72]].forEach(v=>q(new T.SphereGeometry(v[3],14,10),M.skin,v.slice(0,3),g));clouds.push(g)}cloud(-13,30,-21,1.4);cloud(10,28,-18,.95);cloud(0,34,-30,1.7);
 addBronzeWomen(scene,col);
 const skyRealm=createSkyRealm(scene);
+// Compile the sky-realm materials while the browser is idle. This keeps the
+// first portal entry from paying the shader setup cost in the visible frame.
+const warmSkyRealm=()=>{renderer.compileAsync?.(skyRealm.root,camera,scene).catch(()=>{})};
+if('requestIdleCallback'in window)requestIdleCallback(warmSkyRealm,{timeout:1600});else setTimeout(warmSkyRealm,280);
 // Expand terrain and traversal together whenever a landmark is registered.
 const worldBounds={minX:-20,maxX:20,minZ:-20,maxZ:18};
 const traversal=createTraversal();
@@ -116,8 +120,9 @@ const portalButton=document.createElement('button'),skyReturnButton=document.cre
 portalButton.textContent='하늘나라 가기';portalButton.style.cssText+=';left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%)';skyReturnButton.textContent='캠퍼스로 돌아가기';skyReturnButton.style.cssText+=';top:max(18px,env(safe-area-inset-top));left:14px';skySleepButton.textContent='구름침대에서 자기';skySleepButton.style.cssText+=';right:14px;top:max(64px,calc(env(safe-area-inset-top) + 46px))';skyRollButton.textContent='뒹굴뒹굴';skyRollButton.style.cssText+=';right:14px;top:max(110px,calc(env(safe-area-inset-top) + 92px))';
 let skyMode=false,skyPose='idle';const portalRay=new T.Raycaster(),portalPointer=new T.Vector2();
 function setSkyUi(active){skyReturnButton.hidden=skySleepButton.hidden=skyRollButton.hidden=!active;faceButton.hidden=sighButton.hidden=smokeButton.hidden=fastButton.hidden=active;portalButton.hidden=true}
-function enterSkyRealm(){if(smokeMode)leaveSmokeMode();if(sighMode)leaveSighMode();skyMode=true;skyPose='idle';skyRealm.enter();p.position.set(0,skyRealm.floorY,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=skyRealm.floorY;setSkyUi(true);snapCamera=true}
-function leaveSkyRealm(){skyMode=false;skyPose='idle';skyRealm.leave();p.position.set(0,surfaceHeight(0,8)+.07,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSkyUi(false);snapCamera=true}
+function setSkyRenderMode(active){renderer.shadowMap.enabled=!active;renderer.shadowMap.autoUpdate=!active;if(!active)renderer.shadowMap.needsUpdate=true}
+function enterSkyRealm(){if(smokeMode)leaveSmokeMode();if(sighMode)leaveSighMode();skyMode=true;skyPose='idle';setSkyRenderMode(true);skyRealm.enter();p.position.set(0,skyRealm.floorY,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=skyRealm.floorY;setSkyUi(true);snapCamera=true}
+function leaveSkyRealm(){skyMode=false;skyPose='idle';setSkyRenderMode(false);skyRealm.leave();p.position.set(0,surfaceHeight(0,8)+.07,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSkyUi(false);snapCamera=true}
 function setSkyPose(next){skyPose=next;if(next==='sleep'){const bed=skyRealm.beds[1];p.position.set(bed.x,skyRealm.floorY,bed.z);p.rotation.y=Math.PI}else if(next==='roll'){p.position.set(skyRealm.rollZone.x,skyRealm.floorY,skyRealm.rollZone.z)}}
 portalButton.addEventListener('click',enterSkyRealm);skyReturnButton.addEventListener('click',leaveSkyRealm);skySleepButton.addEventListener('click',()=>setSkyPose('sleep'));skyRollButton.addEventListener('click',()=>setSkyPose('roll'));
 renderer.domElement.addEventListener('pointerup',event=>{if(skyMode)return;const rect=renderer.domElement.getBoundingClientRect();portalPointer.x=((event.clientX-rect.left)/rect.width)*2-1;portalPointer.y=-((event.clientY-rect.top)/rect.height)*2+1;portalRay.setFromCamera(portalPointer,camera);if(portalRay.intersectObject(skyRealm.portal,true).length)portalButton.hidden=false});
@@ -205,8 +210,12 @@ function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);joyMove(e)});joy.addEventListener('pointermove',e=>joy.hasPointerCapture(e.pointerId)&&joyMove(e));['pointerup','pointercancel'].forEach(e=>joy.addEventListener(e,()=>{joyV.x=joyV.z=0;mobileMove={x:0,y:0};stick.style.transform=''}));
 let cameraSwipe=null;renderer.domElement.addEventListener('pointerdown',e=>{if(mobileControls&&!sighMode&&!smokeMode)cameraSwipe={x:e.clientX,y:e.clientY}});renderer.domElement.addEventListener('pointermove',e=>{if(!cameraSwipe)return;const dx=e.clientX-cameraSwipe.x,dy=e.clientY-cameraSwipe.y;if(Math.abs(dx)>1||Math.abs(dy)>1){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.55,mobilePitch-dy*.006));cameraSwipe.x=e.clientX;cameraSwipe.y=e.clientY;faceView=false;snapCamera=true}});['pointerup','pointercancel'].forEach(type=>renderer.domElement.addEventListener(type,()=>cameraSwipe=null));
 // Fixed view toward Soonheongwan: Song-i stays small in the lower foreground.
-const updateWorldShadows=createWorldShadows(scene,sun);
-const updateDayNight=createDayNight(scene,sun,M.window);
+const applyWorldShadows=createWorldShadows(scene,sun);
+const applyDayNight=createDayNight(scene,sun,M.window);
+// Campus-only updates are paused in the isolated sky realm. Its own sun,
+// stars and material changes continue through skyRealm.update().
+const updateWorldShadows=focus=>{if(!skyMode)applyWorldShadows(focus)};
+const updateDayNight=timestamp=>{if(!skyMode)applyDayNight(timestamp)};
 const layoutView=new URLSearchParams(location.search).get('view')==='layout';if(layoutView){game.style.width='100vw';game.style.height='100vh';game.style.borderRadius='0';scene.fog=null;camera.far=300;camera.updateProjectionMatrix();}
 const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',walking:walking&&!smokeMode,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,smoking:smokeMode,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p);
 window.startSongiMatdam=()=>{if(!smokeMode)smokeButton.click()};
