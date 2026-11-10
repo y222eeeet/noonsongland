@@ -8,7 +8,7 @@ export const LAMP_SPOTS=[
  [486,299,10.78],[599,299,10.78],[678,299,10.78],[778,295,10.78],[871,299,10.78],
  [588,435,.05],[649,435,.05],[716,438,.05],[791,435,.05],[867,435,.05],[920,516,.05],[1057,510,.05]
 ].map(([x,z,y])=>{const [wx,wz]=map(x,z);return [wx,y,wz]});
-export const BENCH_SPOTS=[[615,434],[677,434],[750,434],[824,434]].map(p=>map(...p));
+export const BENCH_SPOTS=[[615,434],[750,434],[824,434]].map(p=>map(...p));
 
 export function addCampusFurniture(scene,obstacles,M){
  const root=new T.Group();root.name='marked-campus-furniture';scene.add(root);

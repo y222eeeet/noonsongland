@@ -1,3 +1,4 @@
+import { routeHeight } from './campus-routes-layout.js';
 // One source of truth for floors that players may occupy.
 // Visual terrain can be larger for scenery/support, but it never grants movement.
 const upperWalkways=[
@@ -20,6 +21,7 @@ const stairZoneAt=(x,z)=>onLowerFlight(x,z)?'lower':onMiddleLanding(x,z)?'middle
 export function createTraversal(){
  function upperAreaAt(x,z){return upperWalkways.find(area=>inside(x,z,area));}
  function heightAt(x,z){
+  const connection=routeHeight(x,z);if(connection!==null)return connection;
   // Match the visible two-flight stair construction: pink lower flight,
   // central landing, then two lavender upper flights around the hedge.
   if(onTopLanding(x,z))return 10.60;
@@ -49,6 +51,8 @@ export function createTraversal(){
    if(!entersAtBottom&&!entersFromTerrace)return false;
   }
   const from=heightAt(fromX,fromZ),to=heightAt(toX,toZ);
+  // Registered connections remain continuous across the generic cliff cutoff.
+  if(routeHeight(fromX,fromZ)!==null&&routeHeight(toX,toZ)!==null)return Math.abs(to-from)<=1.12;
   // Crossing from an approved upper deck into unregistered scenery is a cliff.
   if(from>2&&to<2)return false;
   return Math.abs(to-from)<=1.12;
