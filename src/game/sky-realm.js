@@ -1,6 +1,6 @@
 import * as T from 'three';
 import { createCloudBed } from '../models/cloud-bed.js';
-import { createSongiRug, RUG_TOP } from '../models/songi-rug.js';
+import { createSongiRug, RUG_TOP, rugContains } from '../models/songi-rug.js';
 
 const isDaytime=timestamp=>{const hour=new Date(timestamp).getHours();return hour>=6&&hour<18};
 // Shared by local and remote animation so every Song-i rolls on the same rug.
@@ -39,28 +39,27 @@ export function createSkyRealm(scene){
  // count preserves the soft low-poly silhouette while cutting most of the
  // transition-time GPU work.
  const cloudGeometry=new T.SphereGeometry(1,8,6),cloudTransform=new T.Object3D();
- // Keep the two rug areas cloud-free.  The rugs sit on the same walkable
- // floor as the rest of the realm, rather than floating over cloud lobes.
- const isRugFootprint=(x,z)=>[-30,SKY_ROLL_ZONE.x].some(rugX=>Math.abs(x-rugX)<12.2&&Math.abs(z)<16.2);
+ // Keep the same cloud carpet beneath each fixed rug. Lower only lobes
+ // whose footprint can touch its snowflake silhouette, including the notches.
+ function touchesRug(x,z,rx,rz){
+  for(const rugX of [-30,SKY_ROLL_ZONE.x]){
+   if(Math.abs(x-rugX)>12.5+rx||Math.abs(z)>16+rz)continue;
+   for(let dx=-rx-.55;dx<=rx+.55;dx+=.55)for(let dz=-rz-.55;dz<=rz+.55;dz+=.55){
+    if(rugContains(-(z+dz)/2.35,(x+dx-rugX)/2.35))return true;
+   }
+  }
+  return false;
+ }
  for(const layer of [{step:2.7,y:-1.30,r:2.18},{step:1.7,y:-.65,r:1.42}]){
   const lobes=[];
   for(let row=0,z=-30;z<=30;row++,z+=layer.step)for(let col=0,x=-40;x<=40;col++,x+=layer.step){
    const seed=row*19.17+col*7.31,v=(Math.sin(seed)+1)/2;
-   if(isRugFootprint(x+(row%2)*layer.step*.5,z))continue;
    lobes.push({x:x+(row%2)*layer.step*.5+Math.sin(seed*2.3)*.28,z:z+Math.cos(seed*1.7)*.26,y:layer.y+Math.sin(seed*1.3)*.08,r:layer.r*(.88+v*.22),v});
   }
   const carpet=new T.InstancedMesh(cloudGeometry,cloudMaterial,lobes.length);carpet.name='cloud-carpet';
   const color=new T.Color();
-  lobes.forEach((lobe,i)=>{cloudTransform.position.set(lobe.x,lobe.y,lobe.z);cloudTransform.scale.set(lobe.r,lobe.r*(.78+lobe.v*.08),lobe.r*(.92+lobe.v*.12));cloudTransform.updateMatrix();carpet.setMatrixAt(i,cloudTransform.matrix);color.copy(cloudMaterial.color).lerp(shadeMaterial.color,lobe.v*.12);carpet.setColorAt(i,color)});
+  lobes.forEach((lobe,i)=>{const ry=lobe.r*(.78+lobe.v*.08),rz=lobe.r*(.92+lobe.v*.12);const y=touchesRug(lobe.x,lobe.z,lobe.r,rz)?Math.min(lobe.y,-.05-ry):lobe.y;cloudTransform.position.set(lobe.x,y,lobe.z);cloudTransform.scale.set(lobe.r,ry,rz);cloudTransform.updateMatrix();carpet.setMatrixAt(i,cloudTransform.matrix);color.copy(cloudMaterial.color).lerp(shadeMaterial.color,lobe.v*.12);carpet.setColorAt(i,color)});
   carpet.castShadow=carpet.receiveShadow=false;root.add(carpet);
- }
- // The rugs need a calm, flat footing rather than cloud lobes underneath,
- // but the lobe cutouts above must never expose the night sky.  These pads
- // seal each cutout all the way to its rectangular edge.
- for(const x of [-30,SKY_ROLL_ZONE.x]){
-  const pad=new T.Mesh(new T.PlaneGeometry(25.2,33.2),cloudMaterial);
-  pad.name='sealed-rug-cloud-floor';pad.rotation.x=-Math.PI/2;pad.position.set(x,-.045,0);
-  pad.castShadow=pad.receiveShadow=false;root.add(pad);
  }
  const rim=new T.Mesh(new T.TorusGeometry(44,.18,10,64),lavender);rim.rotation.x=Math.PI/2;rim.position.y=-.15;root.add(rim);
 
@@ -79,9 +78,7 @@ export function createSkyRealm(scene){
  // Two oversized Song-i rugs frame the bed field. They keep the original
  // face-and-snowflake silhouette, simply enlarged and turned sideways.
  const rugScale=2.35;
- // Lower the enlarged model so its visible upper face is exactly flush with
- // the sky-realm floor.  The carpet cutout above prevents cloud lobes from
- // showing through the rug from below.
+ // Preserve the existing rug height; nearby cloud tops stay below its backing.
  const rugBaseY=(floorY-root.position.y)-RUG_TOP*rugScale;
  const leftRug=createSongiRug();leftRug.name='left-songi-rug';leftRug.position.set(-30,rugBaseY,0);leftRug.rotation.y=Math.PI/2;leftRug.scale.setScalar(rugScale);root.add(leftRug);
  const rollZone=createSongiRug();rollZone.name='right-songi-roll-rug';rollZone.position.set(SKY_ROLL_ZONE.x,rugBaseY,SKY_ROLL_ZONE.z);rollZone.rotation.y=Math.PI/2;rollZone.scale.setScalar(rugScale);root.add(rollZone);
