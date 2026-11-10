@@ -22,11 +22,13 @@ export function addCampusFurniture(scene,obstacles,M){
   [[0,7.3,0,2.55,3.05,2.35],[-1.1,6.5,.15,1.8,2.3,1.8],[1.0,6.8,-.12,1.8,2.4,1.8],[.15,8.1,.1,1.85,2.45,1.8]].forEach(([a,b,c,sx,sy,sz],j)=>{const leaf=mesh(tree,new T.SphereGeometry(1,16,12),j===3?leafLight:leaves,a,b,c);leaf.scale.set(sx,sy,sz)});
   obstacles.push({x,z,r:.5});
  });
- BENCH_SPOTS.forEach(([x,z])=>{
+ BENCH_SPOTS.forEach(([x,z],index)=>{
   const bench=new T.Group();bench.name='lower-road-bench';bench.position.set(x,.05,z+.25);root.add(bench);
+  const seat={id:`campus-bench-${index}`,x,z:z+.25,y:.84,rotation:Math.PI};bench.userData.benchSeat=seat;
   mesh(bench,new T.BoxGeometry(3.8,.20,.8),M.pink,0,.78,0);
   mesh(bench,new T.BoxGeometry(3.8,.8,.16),M.lav,0,1.20,-.35);
   for(const side of [-1,1])mesh(bench,new T.BoxGeometry(.18,.7,.6),trunk,side*1.4,.35,0);
+  bench.traverse(part=>part.userData.benchSeat=seat);
   obstacles.push({x,z:z+.25,w:2.0,h:.6});
  });
  LAMP_SPOTS.forEach(([x,y,z])=>{
