@@ -47,21 +47,24 @@ const fastButton=document.createElement('button');fastButton.type='button';fastB
 fastButton.style.top='max(156px,calc(env(safe-area-inset-top) + 138px))';
 const smokeButton=document.createElement('button'),smokeInhaleButton=document.createElement('button');smokeButton.type=smokeInhaleButton.type='button';smokeButton.textContent='담타';smokeButton.style.cssText="position:absolute;z-index:3;top:max(110px,calc(env(safe-area-inset-top) + 92px));right:14px;padding:8px 10px;border:1px solid #ffffffbb;border-radius:999px;background:#e8e1ef;color:#5f5473;font:700 11px ui-rounded,'Apple SD Gothic Neo',sans-serif";smokeInhaleButton.textContent='흡입 꾹 누르기';smokeInhaleButton.hidden=true;smokeInhaleButton.style.cssText="position:absolute;z-index:4;bottom:max(28px,env(safe-area-inset-bottom));left:50%;width:124px;height:54px;transform:translateX(-50%);border:2px solid #fff;border-radius:999px;background:#78627f;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(smokeButton,smokeInhaleButton);let smokeMode=false,smokeInhaling=false;function leaveSmokeMode(){smokeMode=false;smokeInhaling=false;smokeButton.textContent='담타';smokeInhaleButton.hidden=true;window.leaveSongiSmoke?.()}smokeButton.addEventListener('click',()=>{if(smokeMode){leaveSmokeMode();return}smokeMode=true;smokeButton.textContent='담타 나가기';smokeInhaleButton.hidden=false;window.enterSongiSmoke?.()});function finishSmokeInhale(){window.finishSongiSmoke?.()}smokeInhaleButton.addEventListener('pointerdown',e=>{smokeInhaleButton.setPointerCapture?.(e.pointerId);smokeInhaling=true;window.startSongiSmoke?.()});['pointerup','pointercancel','pointerleave','lostpointercapture','click'].forEach(type=>smokeInhaleButton.addEventListener(type,()=>{if(smokeInhaling){smokeInhaling=false;finishSmokeInhale()}}));addEventListener('pointerup',()=>{if(smokeInhaling){smokeInhaling=false;finishSmokeInhale()}});
 function updateSeatSmokeLayout(seated=false,standControl=null){
- const split=Boolean(seated&&smokeMode);
- // Seated smoking has two bottom controls. Pin each to a separate edge with
- // !important so the normal centered-button style can never put them together.
- const pin=(button,left,right,transform)=>{button.style.setProperty('left',left,'important');button.style.setProperty('right',right,'important');button.style.setProperty('bottom','max(28px, env(safe-area-inset-bottom))','important');button.style.setProperty('transform',transform,'important')};
- if(split){
-  pin(smokeInhaleButton,'14px','auto','none');
-  smokeInhaleButton.style.setProperty('width','min(42vw, 180px)','important');
-  if(standControl){pin(standControl,'auto','14px','none');standControl.style.setProperty('width','auto','important')}
- }else{
-  pin(smokeInhaleButton,'50%','auto','translateX(-50%)');
-  smokeInhaleButton.style.removeProperty('width');
-  if(standControl){pin(standControl,'50%','auto','translateX(-50%)');standControl.style.removeProperty('width')}
+ const split=Boolean(seated&&smokeMode&&standControl);
+ if(!split){
+  seatSmokeBar.hidden=true;
+  if(smokeInhaleButton.parentElement===seatSmokeBar)game.append(smokeInhaleButton);
+  if(standControl?.parentElement===seatSmokeBar)game.append(standControl);
+  smokeInhaleButton.style.cssText=smokeInhaleButton.dataset.defaultStyle;
+  if(standControl)standControl.style.cssText=standControl.dataset.defaultStyle;
+  return;
  }
+ // One shared layout owns both controls while seated and smoking. This avoids
+ // two independently positioned buttons ever claiming the same screen point.
+ if(smokeInhaleButton.parentElement!==seatSmokeBar)seatSmokeBar.append(smokeInhaleButton);
+ if(standControl.parentElement!==seatSmokeBar)seatSmokeBar.append(standControl);
+ seatSmokeBar.hidden=false;
+ for(const button of [smokeInhaleButton,standControl])button.style.cssText='position:static;display:block;flex:1;min-width:0;height:54px;padding:0 12px;transform:none;border:2px solid #fff;border-radius:999px;color:#fff;font:800 15px ui-rounded,\'Apple SD Gothic Neo\',sans-serif;box-shadow:0 8px 20px #392e4444';
+ smokeInhaleButton.style.background='#78627f';standControl.style.background='#a98ad0';
 }
-function setSmokeUi(active){faceButton.hidden=active;sighButton.hidden=active;fastButton.hidden=active;joy.hidden=active;joyV.x=joyV.z=0;window.refreshSongiSeatUi?.();requestAnimationFrame(()=>updateSeatSmokeLayout(Boolean(sittingBench),standButton))}smokeButton.addEventListener('click',()=>setSmokeUi(smokeMode));
+function setSmokeUi(active){faceButton.hidden=active;sighButton.hidden=active;fastButton.hidden=active;joy.hidden=active;joyV.x=joyV.z=0;window.refreshSongiSeatUi?.();updateSeatSmokeLayout(Boolean(sittingBench),standButton)}smokeButton.addEventListener('click',()=>setSmokeUi(smokeMode));
 ['pointerup','pointercancel','lostpointercapture','mouseup','touchend','touchcancel','click'].forEach(type=>inhaleButton.addEventListener(type,releaseInhale));
 const nicknameKey='noonsongland-display-name',nameOptions=['작은 눈송이','졸린 눈송이','보라 송이','말랑 송이','반짝 눈송이'];function saveAnonymousPlayer(session,name){window.noonsongPlayer={id:session.user.id,displayName:name,isAnonymous:true};localStorage.setItem(nicknameKey,name)}function showAnonymousEntry(){const layer=document.createElement('form');layer.style.cssText='position:absolute;z-index:20;inset:0;display:grid;place-items:center;padding:28px;background:#443b5788;backdrop-filter:blur(6px)';layer.innerHTML=`<div style="width:min(100%,310px);padding:27px 23px;border:1px solid #fff;border-radius:25px;background:#fffaf8;color:#5f5473;box-shadow:0 18px 48px #29203555;text-align:center"><div style="font-size:32px">❄️</div><h1 style="margin:10px 0 7px;font-size:21px">익명 송이로 입장</h1><p style="margin:0 0 18px;font-size:13px;line-height:1.55">가입 없이 함께 걸어요.<br>월드에는 송이 이름만 보여요.</p><input aria-label="송이 이름" maxlength="12" value="${nameOptions[Math.floor(Math.random()*nameOptions.length)]}" style="width:100%;padding:12px;border:1px solid #d9cde4;border-radius:13px;color:#5f5473;font:700 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center"><button type="submit" style="width:100%;margin-top:10px;padding:12px;border:0;border-radius:13px;background:#a98ad0;color:white;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif">눈송랜드 들어가기</button><p data-message style="min-height:17px;margin:11px 0 0;font-size:11px;color:#9a7180"></p></div>`;const input=layer.querySelector('input'),button=layer.querySelector('button'),message=layer.querySelector('[data-message]');layer.addEventListener('submit',async e=>{e.preventDefault();const name=input.value.trim().slice(0,12)||'작은 눈송이';button.disabled=true;button.textContent='입장하는 중…';const {data,error}=await ensureAnonymousSession();if(error||!data.session){button.disabled=false;button.textContent='눈송랜드 들어가기';message.textContent=isSupabaseConfigured?'Supabase에서 익명 로그인을 먼저 켜주세요.':'Supabase 연결 설정을 확인해주세요.';return}saveAnonymousPlayer(data.session,name);layer.remove()});game.append(layer)}const savedName=localStorage.getItem(nicknameKey);if(savedName){ensureAnonymousSession().then(({data})=>{if(data?.session)saveAnonymousPlayer(data.session,savedName)}).catch(()=>{})}else showAnonymousEntry();
 const gl=document.createElement('canvas').getContext('webgl2')||document.createElement('canvas').getContext('webgl');
@@ -280,6 +283,8 @@ const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,ro
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
 sitButton.textContent='앉기';standButton.textContent='일어나기';
+smokeInhaleButton.dataset.defaultStyle=smokeInhaleButton.style.cssText;standButton.dataset.defaultStyle=standButton.style.cssText;
+const seatSmokeBar=document.createElement('div');seatSmokeBar.hidden=true;seatSmokeBar.style.cssText="position:absolute;z-index:10;right:14px;bottom:max(28px,env(safe-area-inset-bottom));left:14px;display:flex;gap:12px;align-items:center;pointer-events:auto";seatSmokeBar.addEventListener('pointerdown',event=>event.stopPropagation());game.append(seatSmokeBar);
 function setSeatUi(active){if(active){faceButton.hidden=sighButton.hidden=fastButton.hidden=joy.hidden=true;smokeButton.hidden=false;standButton.hidden=false;updateSeatSmokeLayout(true,standButton);return}standButton.hidden=true;updateSeatSmokeLayout(false,standButton);if(!smokeMode){faceButton.hidden=sighButton.hidden=fastButton.hidden=joy.hidden=false}}
 window.refreshSongiSeatUi=()=>setSeatUi(Boolean(sittingBench));
 function standFromBench(){
