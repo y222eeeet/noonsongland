@@ -22,8 +22,13 @@ export function createBedMotion(avatar,floorY,onComplete){
  function leave(bed,now){
   stages=[];
   stage(pose(bed.x,bed.worldY+.84,bed.z+2.25,0,0),1.35);
-  stage(pose(bed.x+2.3,floorY,bed.z+2.25,0,Math.PI/2),1.25,true,.18);
-  stage(pose(bed.x+2.6,floorY,bed.z+2.65,0,Math.PI),.5,true);
+  // Sit up on the right, use the aisle between each bed column, then leave
+  // through the nearest outer edge. The final point is fully outside the bed zone.
+  const aisleX=bed.x+2.3,exitZ=bed.z<0?-28:28,exitX=22;
+  stage(pose(aisleX,floorY,bed.z+2.25,0,Math.PI/2),1.25,true,.18);
+  const aisleDistance=Math.abs(exitZ-(bed.z+2.25));
+  stage(pose(aisleX,floorY,exitZ,0,exitZ>bed.z?0:Math.PI),Math.max(.8,aisleDistance/6),true);
+  stage(pose(exitX,floorY,exitZ,0,Math.PI/2),Math.max(.65,Math.abs(exitX-aisleX)/6),true);
   begin(now);
  }
  function update(now){
