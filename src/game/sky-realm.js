@@ -63,8 +63,11 @@ export function createSkyRealm(scene){
  }
  const bedOrder=[];for(let row=0;row<5;row++)bedOrder.push(...[2,1,3,0,4,5].map(column=>row*6+column));
 
- // Flat Song-i silhouette rests above the cloud carpet, with no overlapping lobes.
- const rollZone=createSongiRug();rollZone.position.set(SKY_ROLL_ZONE.x,0,SKY_ROLL_ZONE.z);root.add(rollZone);
+ // Two oversized Song-i rugs frame the bed field. They keep the original
+ // face-and-snowflake silhouette, simply enlarged and turned sideways.
+ const rugScale=2.35;
+ const leftRug=createSongiRug();leftRug.name='left-songi-rug';leftRug.position.set(-30,0,0);leftRug.rotation.y=Math.PI/2;leftRug.scale.setScalar(rugScale);root.add(leftRug);
+ const rollZone=createSongiRug();rollZone.name='right-songi-roll-rug';rollZone.position.set(SKY_ROLL_ZONE.x,0,SKY_ROLL_ZONE.z);rollZone.rotation.y=Math.PI/2;rollZone.scale.setScalar(rugScale);root.add(rollZone);
  const surfaceHeightAt=(x,z)=>rugContains(x-SKY_ROLL_ZONE.x,z-SKY_ROLL_ZONE.z)?root.position.y+RUG_TOP:52.18;
 
  const dayGroup=new T.Group();root.add(dayGroup);
