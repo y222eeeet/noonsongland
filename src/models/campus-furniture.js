@@ -31,9 +31,9 @@ export function addCampusFurniture(scene,obstacles,M){
  });
  LAMP_SPOTS.forEach(([x,y,z])=>{
   const pole=new T.Group();pole.name='marked-streetlamp';pole.position.set(x,y,z);root.add(pole);
-  mesh(pole,new T.CylinderGeometry(.08,.13,3.2,10),M.dark,0,1.6,0);
-  mesh(pole,new T.SphereGeometry(.27,12,8),new T.MeshStandardMaterial({color:'#fff4bd',emissive:'#ffd977',emissiveIntensity:.55}),0,3.25,0);
-  const light=new T.PointLight('#ffdc9b',0,17,2);light.position.y=3.25;light.userData.campusLamp=true;pole.add(light);
+  mesh(pole,new T.CylinderGeometry(.08,.13,6.4,10),M.dark,0,3.2,0);
+  mesh(pole,new T.SphereGeometry(.27,12,8),new T.MeshStandardMaterial({color:'#fff4bd',emissive:'#ffd977',emissiveIntensity:.55}),0,6.5,0);
+  const light=new T.PointLight('#ffdc9b',0,17,2);light.position.y=6.5;light.userData.campusLamp=true;pole.add(light);
   obstacles.push({x,z,r:.22});
  });
  return root;
