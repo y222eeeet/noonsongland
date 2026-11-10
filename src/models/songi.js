@@ -134,6 +134,23 @@ export function createSongi() {
   const exhaleMouth=mesh(new T.CircleGeometry(.075,24),purple,[0,2.65,.7]);exhaleMouth.scale.set(1.25,.65,1);breathFeatures.push(exhaleMouth);
   const exhaleLip=mesh(new T.TorusGeometry(.075,.025,8,24),purple,[0,2.65,.705]);exhaleLip.scale.set(1.25,.65,1);breathFeatures.push(exhaleLip);
   breathFeatures.forEach(o=>o.visible=false);
+  // Every face state owns one mutually-exclusive eye layer and one
+  // mutually-exclusive mouth layer. New expressions belong in this table;
+  // setFaceState always clears every facial layer before revealing a state.
+  const faceStates={
+    normal:{eyes:[parts.eye0,parts.eye1],mouth:[parts.mouth]},
+    blink:{eyes:closedEyes,mouth:[parts.mouth]},
+    inhale:{eyes:smallEyes,mouth:[openMouth,mouthRim]},
+    exhale:{eyes:closedEyes,mouth:[exhaleMouth,exhaleLip],brows},
+    sleep:{eyes:closedEyes,mouth:[parts.mouth]}
+  };
+  const allFaceLayers=[parts.eye0,parts.eye1,...smallEyes,...closedEyes,...brows,parts.mouth,openMouth,mouthRim,exhaleMouth,exhaleLip];
+  function setFaceState(name){
+    const state=faceStates[name]||faceStates.normal;
+    allFaceLayers.forEach(layer=>layer.visible=false);
+    [...state.eyes,...state.mouth,...(state.brows||[])].forEach(layer=>layer.visible=true);
+    root.userData.faceState=name;
+  }
   // Wrap every expression mesh onto the very same surface used by the face.
   // Bury each mesh's rear half into the face to avoid any visible air gap.
   root.updateMatrixWorld(true);
@@ -183,15 +200,13 @@ export function createSongi() {
       targetFace.lerp(pinkFace,T.MathUtils.smoothstep(heldSeconds,5,10));
     }
     faceMaterial.color.lerp(targetFace,1-Math.exp(-dt*5));
-    const inhale=state==='inhale',exhale=state==='exhale',breathing=inhale||exhale||sleeping;
-    parts.eye0.visible=parts.eye1.visible=parts.mouth.visible=!breathing;
-    smallEyes.forEach(o=>o.visible=inhale);
-    closedEyes.forEach(o=>o.visible=exhale||sleeping);
-    brows.forEach(o=>o.visible=exhale);
-    openMouth.visible=mouthRim.visible=inhale;
-    exhaleMouth.visible=exhaleLip.visible=exhale;
-    const cycle=elapsed%4.8,blink=cycle>4.35?Math.max(.07,Math.abs((cycle-4.575)/.225)):1;
-    parts.eye0.scale.y=parts.eye1.scale.y=blink;
+    const inhale=state==='inhale',exhale=state==='exhale';
+    const cycle=elapsed%4.8,blinking=!inhale&&!exhale&&!sleeping&&cycle>4.42&&cycle<4.70;
+    const faceState=sleeping?'sleep':inhale?'inhale':exhale?'exhale':blinking?'blink':'normal';
+    setFaceState(faceState);
+    // Reset the base eye scale every frame; blink uses its own closed-eye
+    // layer, so an open and closed eye can never be rendered together.
+    parts.eye0.scale.y=parts.eye1.scale.y=1;
     parts.mouth.scale.y=.82+.18*Math.sin(elapsed*2.4);
   };
   return root;
