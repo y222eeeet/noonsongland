@@ -1,4 +1,5 @@
 import { routeHeight } from './campus-routes-layout.js';
+import { insidePond, onStoneBridge, pondWalkHeight } from './pond-layout.js';
 // One source of truth for floors that players may occupy.
 // Visual terrain can be larger for scenery/support, but it never grants movement.
 const upperWalkways=[
@@ -21,6 +22,7 @@ const stairZoneAt=(x,z)=>onLowerFlight(x,z)?'lower':onMiddleLanding(x,z)?'middle
 export function createTraversal(){
  function upperAreaAt(x,z){return upperWalkways.find(area=>inside(x,z,area));}
  function heightAt(x,z){
+  const pondHeight=pondWalkHeight(x,z);if(pondHeight!==null)return pondHeight;
   const connection=routeHeight(x,z);if(connection!==null)return connection;
   // Match the visible two-flight stair construction: pink lower flight,
   // central landing, then two lavender upper flights around the hedge.
@@ -31,7 +33,7 @@ export function createTraversal(){
   if(upperAreaAt(x,z))return 10.78;
   return 0;
  }
- function canOccupy(x,z,bounds){return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
+ function canOccupy(x,z,bounds){if(insidePond(x,z)&&!onStoneBridge(x,z)&&heightAt(x,z)<2)return false;return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
  function canStep(fromX,fromZ,toX,toZ,bounds){
   if(!canOccupy(toX,toZ,bounds))return false;
   const fromStair=stairZoneAt(fromX,fromZ),toStair=stairZoneAt(toX,toZ);

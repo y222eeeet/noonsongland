@@ -29,7 +29,7 @@ export function createSkyRealm(scene){
  worldBase.rotation.x=-Math.PI/2;worldBase.position.y=-3.1;worldBase.castShadow=worldBase.receiveShadow=false;root.add(worldBase);
  // A separate sky dome makes this feel like its own world, rather than a view
  // onto the campus sky. It changes independently with the sky-realm theme.
- const skyDome=new T.Mesh(new T.SphereGeometry(82,32,20),skyMaterial);
+ const skyDome=new T.Mesh(new T.SphereGeometry(82,20,14),skyMaterial);
  skyDome.position.y=24;skyDome.castShadow=skyDome.receiveShadow=false;root.add(skyDome);
 
  // Overlapping round lobes: staggered, varied and deep enough to hide all gaps.
@@ -37,7 +37,7 @@ export function createSkyRealm(scene){
  // The carpet contains thousands of overlapping lobes. Its lower segment
  // count preserves the soft low-poly silhouette while cutting most of the
  // transition-time GPU work.
- const cloudGeometry=new T.SphereGeometry(1,12,8),cloudTransform=new T.Object3D();
+ const cloudGeometry=new T.SphereGeometry(1,8,6),cloudTransform=new T.Object3D();
  for(const layer of [{step:2.7,y:-1.30,r:2.18},{step:1.7,y:-.65,r:1.42}]){
   const lobes=[];
   for(let row=0,z=-30;z<=30;row++,z+=layer.step)for(let col=0,x=-40;x<=40;col++,x+=layer.step){
@@ -75,7 +75,11 @@ export function createSkyRealm(scene){
  const rainbow=new T.Group();rainbow.position.set(0,4,-31);dayGroup.add(rainbow);
  const rainbowColors=['#f5a9b9','#f6ca91','#f7e9a0','#b9dfa9','#acd9ee','#c7b4e8'];
  rainbowColors.forEach((color,index)=>{const radius=15.2-index*.58,points=[];for(let step=0;step<=24;step++){const angle=Math.PI*.14+(Math.PI*.72*step/24);points.push(new T.Vector3(Math.cos(angle)*radius,Math.sin(angle)*radius,0))}const arc=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),24,.105,6,false),new T.MeshBasicMaterial({color,transparent:true,opacity:.33}));arc.castShadow=arc.receiveShadow=false;rainbow.add(arc)});
- const starGroup=new T.Group();root.add(starGroup);for(let i=0;i<90;i++){const x=-25+(i*37%50),y=5+(i*17%23),z=-28+(i*29%20);const star=add(starGroup,new T.SphereGeometry(.045+(i%3)*.025,7,6),new T.MeshBasicMaterial({color:'#fff5cb'}),[x,y,z]);star.userData.phase=i*.71}
+ const starGroup=new T.Group();root.add(starGroup);
+ // One point cloud replaces ninety separate star meshes while keeping the same field.
+ const starPositions=[];for(let i=0;i<90;i++)starPositions.push(-25+(i*37%50),5+(i*17%23),-28+(i*29%20));
+ const starGeometry=new T.BufferGeometry();starGeometry.setAttribute('position',new T.Float32BufferAttribute(starPositions,3));
+ const stars=new T.Points(starGeometry,new T.PointsMaterial({color:'#fff5cb',size:.17,sizeAttenuation:true,transparent:true,opacity:.92}));starGroup.add(stars);
  const moon=add(starGroup,new T.SphereGeometry(1.35,16,12),new T.MeshBasicMaterial({color:'#fff3dc'}),[13,16,-22]);
 
  const portal=new T.Group();portal.position.set(0,12.45,-16.8);scene.add(portal);
@@ -85,6 +89,6 @@ export function createSkyRealm(scene){
  portal.traverse(object=>object.userData.skyPortal=true);
 
  let lastTheme='';
- function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;dayGroup.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#f2f7ff':'#151a35');skyMaterial.color.set(day?'#aee2ff':'#10162f')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
+ function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;dayGroup.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#f2f7ff':'#151a35');skyMaterial.color.set(day?'#aee2ff':'#10162f')}if(starGroup.visible)stars.material.opacity=.72+.20*Math.sin(timestamp*.002);ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
  return {root,portal,beds,bedOrder,rollZone:SKY_ROLL_ZONE,floorY:52.18,surfaceHeightAt,update,enter(){root.visible=true;portal.visible=false},leave(){root.visible=false;portal.visible=true}};
 }

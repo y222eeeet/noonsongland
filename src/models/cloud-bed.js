@@ -7,7 +7,7 @@ export function createCloudBed(starColors){
  const material=color=>new T.MeshStandardMaterial({color,roughness:.94});
  const white=material('#fff8f4'),lavender=material('#ddd0f4'),duvet=material('#f4eaf9');
  const accents=starColors.map(material);
- function sphere(parent,mat,x,y,z,sx,sy,sz){const m=new T.Mesh(new T.SphereGeometry(1,20,14),mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;}
+ function sphere(parent,mat,x,y,z,sx,sy,sz){const m=new T.Mesh(new T.SphereGeometry(1,12,8),mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;}
  function cushion(mat,w,length,height,y,z){
   const r=.42,shape=new T.Shape(),x=-w/2,b=-length/2;
   shape.moveTo(x+r,b);shape.lineTo(x+w-r,b);shape.quadraticCurveTo(x+w,b,x+w,b+r);shape.lineTo(x+w,b+length-r);shape.quadraticCurveTo(x+w,b+length,x+w-r,b+length);shape.lineTo(x+r,b+length);shape.quadraticCurveTo(x,b+length,x,b+length-r);shape.lineTo(x,b+r);shape.quadraticCurveTo(x,b,x+r,b);
@@ -24,7 +24,7 @@ export function createCloudBed(starColors){
  };
  const quilt=cushion(duvet,3.2,3.8,.22,.40,.65);
  let padded=quilt.geometry.toNonIndexed();
- for(let pass=0;pass<3;pass++){
+ for(let pass=0;pass<1;pass++){
   const src=padded.attributes.position,out=[];
   for(let i=0;i<src.count;i+=3){const a=[src.getX(i),src.getY(i),src.getZ(i)],b=[src.getX(i+1),src.getY(i+1),src.getZ(i+1)],c=[src.getX(i+2),src.getY(i+2),src.getZ(i+2)];const mid=(u,v)=>u.map((n,j)=>(n+v[j])/2),ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);out.push(...a,...ab,...ca,...ab,...b,...bc,...ca,...bc,...c,...ab,...bc,...ca)}
   padded.dispose();padded=new T.BufferGeometry();padded.setAttribute('position',new T.Float32BufferAttribute(out,3));
