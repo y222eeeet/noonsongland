@@ -68,7 +68,9 @@ export function createSkyRealm(scene){
  const rugScale=2.35;
  const leftRug=createSongiRug();leftRug.name='left-songi-rug';leftRug.position.set(-30,0,0);leftRug.rotation.y=Math.PI/2;leftRug.scale.setScalar(rugScale);root.add(leftRug);
  const rollZone=createSongiRug();rollZone.name='right-songi-roll-rug';rollZone.position.set(SKY_ROLL_ZONE.x,0,SKY_ROLL_ZONE.z);rollZone.rotation.y=Math.PI/2;rollZone.scale.setScalar(rugScale);root.add(rollZone);
- const surfaceHeightAt=(x,z)=>rugContains(x-SKY_ROLL_ZONE.x,z-SKY_ROLL_ZONE.z)?root.position.y+RUG_TOP:52.18;
+ // The rug is enlarged as a whole, so its raised surface scales upward too.
+ // Keep Song-i's rolling center on that visible top surface, never inside it.
+ const surfaceHeightAt=(x,z)=>rugContains(x-SKY_ROLL_ZONE.x,z-SKY_ROLL_ZONE.z)?root.position.y+RUG_TOP*rugScale:52.18;
 
  const dayGroup=new T.Group();root.add(dayGroup);
  const sun=new T.Group();sun.position.set(-13,15,-19);dayGroup.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#fff0ac',emissive:'#ffd36a',emissiveIntensity:1.25}),[0,0,0]);const sunLight=new T.PointLight('#ffe7a5',15,58,2);sun.add(sunLight);
