@@ -15,6 +15,7 @@ const onLowerFlight=(x,z)=>Math.abs(x)<=7.15&&z>=.08&&z<=5.72;
 const onMiddleLanding=(x,z)=>Math.abs(x)<=6.4&&z>=-1.52&&z<=.08;
 const onUpperFlight=(x,z)=>(x>=-5.85&&x<=-1.05||x>=1.05&&x<=5.85)&&z>=-4.87&&z<=-1.095;
 const onTopLanding=(x,z)=>Math.abs(x)<=5.8&&z>=-5.92&&z<=-4.32;
+const stairZoneAt=(x,z)=>onLowerFlight(x,z)?'lower':onMiddleLanding(x,z)?'middle':onUpperFlight(x,z)?'upper':onTopLanding(x,z)?'top':'';
 
 export function createTraversal(){
  function upperAreaAt(x,z){return upperWalkways.find(area=>inside(x,z,area));}
@@ -31,6 +32,22 @@ export function createTraversal(){
  function canOccupy(x,z,bounds){return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
  function canStep(fromX,fromZ,toX,toZ,bounds){
   if(!canOccupy(toX,toZ,bounds))return false;
+  const fromStair=stairZoneAt(fromX,fromZ),toStair=stairZoneAt(toX,toZ);
+  // Stairs are a continuous traversal lane, not a sequence of tiny cliffs.
+  // Once on a tread, players may freely move up, down, or sideways within
+  // the registered flights and landings. Leaving is allowed only at the
+  // bottom road or through the top terrace; every lateral edge stays closed.
+  if(fromStair&&toStair)return true;
+  if(fromStair&&!toStair){
+   const leavesAtBottom=fromStair==='lower'&&toZ>5.72;
+   const leavesAtTop=fromStair==='top'&&Boolean(upperAreaAt(toX,toZ));
+   if(!leavesAtBottom&&!leavesAtTop)return false;
+  }
+  if(!fromStair&&toStair){
+   const entersAtBottom=toStair==='lower'&&fromZ>5.72;
+   const entersFromTerrace=toStair==='top'&&Boolean(upperAreaAt(fromX,fromZ));
+   if(!entersAtBottom&&!entersFromTerrace)return false;
+  }
   const from=heightAt(fromX,fromZ),to=heightAt(toX,toZ);
   // Crossing from an approved upper deck into unregistered scenery is a cliff.
   if(from>2&&to<2)return false;
