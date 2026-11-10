@@ -6,7 +6,7 @@ export const FLOOR={upper:10.78,grass:10.68,foundation:10.60,lower:.05};
 // Pavement wins over grass. Every cell has exactly one visible surface.
 export function unifyWorldFloors(scene,materials){
  const zones=[
-  {x0:-66,x1:20,z0:-22,z1:-8,paved:true},
+  {x0:-66,x1:32,z0:-22,z1:-8,paved:true},
   {x0:-65,x1:-47,z0:-8,z1:32,paved:true},
   // Connect Myungshin's entrance apron directly to the main walk.
   {x0:-70,x1:-64,z0:-10,z1:17,paved:true}

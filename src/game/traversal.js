@@ -3,7 +3,7 @@
 const upperWalkways=[
  // The terrace starts beyond the top landing. Keeping the stair crest out of
  // this rectangle prevents it from being mistaken for a 10.78m vertical wall.
- {id:'soonheongwan-terrace',minX:-66,maxX:20,minZ:-22,maxZ:-5.92},
+ {id:'soonheongwan-terrace',minX:-66,maxX:32,minZ:-22,maxZ:-5.92},
  {id:'myungshin-courtyard',minX:-70,maxX:-47,minZ:-10,maxZ:32},
  {id:'jinri-court',minX:-66,maxX:-36,minZ:-36,maxZ:-20},
  {id:'smoking-deck',minX:-97,maxX:-65,minZ:-32,maxZ:-20},

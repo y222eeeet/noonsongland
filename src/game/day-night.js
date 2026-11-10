@@ -20,9 +20,7 @@ export function createDayNight(scene,sun,windowMaterial){
   scene.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.userData?.campusWindow)windows.add(m);if(m.userData?.nightBronze)bronzes.add(m);}}});
   const bulbs=[];scene.traverse(o=>{if(o.isMesh&&o.material?.emissiveIntensity>.1)bulbs.push(o.material);});
   const lamps=[];
-  for(const [x,y,z] of [[-3,3.25,5],[3,3.25,5],[-18,14,-23],[-18,14,-29],[-81,14,-28],[-86,14,2]]){
-    const light=new T.PointLight('#ffdc9b',0,17,2);light.position.set(x,y,z);scene.add(light);lamps.push(light);
-  }
+  scene.traverse(o=>{if(o.isPointLight&&o.userData.campusLamp)lamps.push(o)});
   const vertices=[];
   for(let i=0;i<160;i++)vertices.push(-110+(i*73%170),44+(i*17%31),-100+(i*47%150));
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));

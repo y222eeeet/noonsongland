@@ -19,6 +19,7 @@ import { createBedMotion } from './src/game/bed-motion.js';
 import { createTraversal } from './src/game/traversal.js';
 import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
+import { addCampusFurniture } from './src/models/campus-furniture.js';
 function prepareExhale(group,seconds){const amount=Math.max(0,Math.min(1,seconds/20));if(group.children.length===4){const template=group.children[0];for(let i=4;i<16;i++){const puff=template.clone();puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2);group.add(puff)}}const profile={count:4+Math.round(amount*12),scale:1+amount*.85,opacity:.42+amount*.22};group.userData.exhale=profile;group.children.forEach((puff,i)=>puff.visible=i<profile.count);return profile}
 function prepareSmokeExhale(group,seconds){const amount=Math.min(1,Math.max(0,seconds/6));while(group.children.length<24)group.add(group.children[0].clone());const count=3+Math.round(amount*21),emission=.15+amount*1.8;group.children.forEach((puff,i)=>{if(!puff.userData.ownSmokeMaterial){puff.material=puff.material.clone();puff.userData.ownSmokeMaterial=true}puff.visible=false;puff.userData.delay=i/(count-1)*emission});group.userData.exhale={count,emission,duration:emission+1.6,radius:.16+amount*.22};return group.userData.exhale}
 function updateSmokeExhale(group,age){const p=group.userData.exhale;group.scale.setScalar(1);group.children.forEach((puff,i)=>{const life=age-puff.userData.delay;puff.visible=i<p.count&&life>=0&&life<1.6;if(!puff.visible)return;puff.position.set(Math.sin(i*2.4)*(.12+life*.16),life*.75,life*.45);puff.scale.setScalar(p.radius/.23*(.45+life*.7));puff.material.opacity=(.25+.18*(p.count/24))*(1-life/1.6)})}
@@ -64,7 +65,7 @@ const soon=new T.Group();soon.position.set(0,0,-5);scene.add(soon);const sp=(g,m
 soon.position.set(0,7.2,-27);soon.scale.set(4,2,2);hedge.visible=false;col.pop();soon.children.forEach(o=>{if(o.isMesh&&o.geometry.parameters.height===.32)o.visible=false;});col.push({x:0,z:-27,w:32.5,h:1.6});function dot(x,z){const d=q(new T.SphereGeometry(.38,10,8),M.hedge,[x,.35,z]);d.scale.y=.68}const glyph=[['111','101','111','101','101'],['101','101','111','101','111']];glyph.forEach((g,i)=>g.forEach((r,y)=>[...r].forEach((v,x)=>v==='1'&&dot(-2.15+i*2.55+x*.42,-8+y*.43))));
 function tree(x,z,s=1,pink=false){return;const g=new T.Group();g.position.set(x,0,z);g.scale.setScalar(s);scene.add(g);q(new T.CylinderGeometry(.25,.34,2.2,10),M.trunk,[0,1.05,0],g);const lm=mat(pink?'#f2b8cc':'#a5d9aa');[[0,2.55,0,1.18],[-.5,2.82,.1,.82],[.52,2.75,0,.9],[.08,3.28,0,.76]].forEach(v=>q(new T.DodecahedronGeometry(v[3],1),lm,v.slice(0,3),g));col.push({x,z,r:.85*s})} [[-9,5,1.18], [9,4,1.15,1],[-10,-5,1.05,1],[10,-5,1.08],[-6,-10,.8],[6,-10,.8,1],[-12,11,.92],[12,10,.9,1]].forEach(v=>tree(v[0],v[1],v[2],v[3]));
 function bench(x,z,r){return;const g=new T.Group();g.position.set(x,0,z);g.rotation.y=r;scene.add(g);q(new T.BoxGeometry(2.2,.18,.46),M.pink,[0,.76,0],g);const back=q(new T.BoxGeometry(2.2,.18,.38),M.lav,[0,1.08,.2],g);back.rotation.x=.22;[-.78,.78].forEach(a=>q(new T.CylinderGeometry(.09,.12,.75,8),M.trunk,[a,.36,0],g));col.push({x,z,w:1.35,h:.5})}bench(-10,8,.2);bench(10,8,-.2);bench(-12,3,Math.PI/2);bench(12,3,Math.PI/2);
-function lamp(x,z){const g=new T.Group();g.position.set(x,0,z);scene.add(g);q(new T.CylinderGeometry(.08,.13,3.2,10),M.dark,[0,1.6,0],g);q(new T.SphereGeometry(.27,12,8),new T.MeshStandardMaterial({color:'#fff4bd',emissive:'#ffd977',emissiveIntensity:.55}),[0,3.25,0],g);col.push({x,z,r:.28})}[[-3,5],[3,5],[-8,-1],[8,-1]].forEach(v=>lamp(...v));
+function lamp(x,z){const g=new T.Group();g.position.set(x,0,z);scene.add(g);q(new T.CylinderGeometry(.08,.13,3.2,10),M.dark,[0,1.6,0],g);q(new T.SphereGeometry(.27,12,8),new T.MeshStandardMaterial({color:'#fff4bd',emissive:'#ffd977',emissiveIntensity:.55}),[0,3.25,0],g);col.push({x,z,r:.28})}
 const clouds=[];function cloud(x,y,z,s){const g=new T.Group();g.position.set(x,y,z);g.scale.setScalar(s);scene.add(g);[[0,0,0,.9],[-.8,-.1,.1,.65],[.72,-.12,.1,.68],[.15,.4,0,.72]].forEach(v=>q(new T.SphereGeometry(v[3],14,10),M.skin,v.slice(0,3),g));clouds.push(g)}cloud(-13,30,-21,1.4);cloud(10,28,-18,.95);cloud(0,34,-30,1.7);
 addBronzeWomen(scene,col);
 const skyRealm=createSkyRealm(scene);
@@ -89,7 +90,7 @@ q(new T.BoxGeometry(20,10.92,38),M.cream,[-56,5.14,13.85]);
 q(new T.BoxGeometry(20,.10,38),M.grass2,[-56,10.63,13.85]);
 // One continuous L-shaped surface: no coplanar overlaps or internal seams.
 const courtOutline=new T.Shape();
-[[-66,-22],[20,-22],[20,-8],[-47,-8],[-47,32],[-65,32],[-65,-8],[-66,-8]].forEach(([x,z],i)=>i?courtOutline.lineTo(x,-z):courtOutline.moveTo(x,-z));courtOutline.closePath();
+[[-66,-22],[32,-22],[32,-8],[-47,-8],[-47,32],[-65,32],[-65,-8],[-66,-8]].forEach(([x,z],i)=>i?courtOutline.lineTo(x,-z):courtOutline.moveTo(x,-z));courtOutline.closePath();
 const courtSurface=q(new T.ShapeGeometry(courtOutline),M.path,[0,10.78,0]);courtSurface.rotation.x=-Math.PI/2;courtSurface.castShadow=false;
 // Pink annotation: separate lower-level road below the upper courtyard edge.
 q(new T.BoxGeometry(35,.14,9),M.path,[-28,-.02,-.1]);
@@ -97,10 +98,11 @@ q(new T.BoxGeometry(35,.12,.35),M.cream,[-28,.03,4.5]);
 q(new T.BoxGeometry(35,.12,.35),M.cream,[-28,.03,-4.65]);
 const beforeFurniture=new Set(scene.children);
 [[-22,-38],[-20,-17],[-18,-37]].forEach(([x,z],i)=>tree(x,z,1.05,i%2===0));
-bench(-18,-32,Math.PI/2);bench(-19,-22,0);lamp(-18,-29);lamp(-18,-23);
+bench(-18,-32,Math.PI/2);bench(-19,-22,0);
 scene.children.forEach(o=>{if(!beforeFurniture.has(o))o.position.y+=10.78;});
 // Continuous support under the new Myungshin entrance connection.
 q(new T.BoxGeometry(6,10.74,27),M.cream,[-67,5.23,3.5]);
+addCampusFurniture(scene,col,M);
 const worldFloor=unifyWorldFloors(scene,M);
 const guestbook=createGuestbook(scene,camera,renderer,col);
 function surfaceHeight(x,z,realm){
