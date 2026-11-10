@@ -2,6 +2,7 @@ import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
 import { createSongi } from '../models/songi.js';
 import { createRemoteActions } from './remote-actions.js';
+import { SKY_ROLL_ZONE } from './sky-realm.js';
 
 // Ephemeral movement and social interactions are broadcast, never written to the database.
 export function createMultiplayer(scene, readState, surfaceHeight, bounds, localAvatar) {
@@ -38,7 +39,25 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  }
  function sendTargeted(event,to,extra={}){return broadcast(event,{to,from:connectionId,...extra},true)}
  function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>g.dispose());materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id);if(selectedPeerId===id){selectedPeerId='';requestButton.hidden=true}if(matdam?.partnerId===id)endMatdamView()}
- function createPeer(id){if(peers.has(id)||peers.size>=100)return peers.get(id);const mesh=createSongi();mesh.visible=false;scene.add(mesh);const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null};const applyPose=()=>{const state=peer.state;if(state?.realm==='sky'&&state.skyPose==='roll'){const elapsed=Math.max(0,Date.now()-(Number.isFinite(state.skyRollStartedAt)?state.skyRollStartedAt:Date.now())),duration=1500,travel=4.6,leg=Math.floor(elapsed/duration)%4,progress=(elapsed%duration)/duration,direction=[1,-1,-1,1][leg],start=[0,travel,0,-travel][leg],end=[travel,0,-travel,0][leg];mesh.rotation.set(-Math.PI/2,0,0);mesh.rotateY(direction*progress*Math.PI*2);rollCenter.set(start+(end-start)*progress,surfaceHeight(0,8,'sky')+.72,8);mesh.position.copy(rollCenter).sub(rollOffset.set(0,2.25,0).applyQuaternion(mesh.quaternion))}else if(state?.realm==='sky'&&state.skyPose==='transition'&&Number.isFinite(state.skyMotion?.y)&&Number.isFinite(state.skyMotion?.pitch)){mesh.position.y=Math.max(50,Math.min(58,state.skyMotion.y));mesh.rotation.x=Math.max(-Math.PI/2,Math.min(0,state.skyMotion.pitch));mesh.rotation.z=0}else if(state?.realm==='sky'&&state.skyPose==='sleep'){mesh.position.y=Number.isFinite(state.skyMotion?.y)?Math.max(50,Math.min(58,state.skyMotion.y)):surfaceHeight(mesh.position.x,mesh.position.z,'sky')+.84;mesh.rotation.x=-Math.PI/2;mesh.rotation.z=0}else{mesh.rotation.x=0;mesh.rotation.z=0}};peer.applyPose=applyPose;peers.set(id,peer);return peer}
+ function createPeer(id){
+  if(peers.has(id)||peers.size>=100)return peers.get(id);
+  const mesh=createSongi();mesh.visible=false;scene.add(mesh);
+  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null};
+  const applyPose=()=>{
+   const state=peer.state;
+   if(state?.realm==='sky'&&state.skyPose==='roll'){
+    const elapsed=Math.max(0,Date.now()-(Number.isFinite(state.skyRollStartedAt)?state.skyRollStartedAt:Date.now())),duration=1500,travel=4.6,leg=Math.floor(elapsed/duration)%4,progress=(elapsed%duration)/duration,direction=[1,-1,-1,1][leg],start=[0,travel,0,-travel][leg],end=[travel,0,-travel,0][leg];
+    mesh.rotation.set(-Math.PI/2,0,0);mesh.rotateY(direction*progress*Math.PI*2);
+    rollCenter.set(SKY_ROLL_ZONE.x+start+(end-start)*progress,surfaceHeight(SKY_ROLL_ZONE.x,SKY_ROLL_ZONE.z,'sky')+.72,SKY_ROLL_ZONE.z);
+    mesh.position.copy(rollCenter).sub(rollOffset.set(0,2.25,0).applyQuaternion(mesh.quaternion))
+   }else if(state?.realm==='sky'&&state.skyPose==='transition'&&Number.isFinite(state.skyMotion?.y)&&Number.isFinite(state.skyMotion?.pitch)){
+    mesh.position.y=Math.max(50,Math.min(58,state.skyMotion.y));mesh.rotation.x=Math.max(-Math.PI/2,Math.min(0,state.skyMotion.pitch));mesh.rotation.z=0
+   }else if(state?.realm==='sky'&&state.skyPose==='sleep'){
+    mesh.position.y=Number.isFinite(state.skyMotion?.y)?Math.max(50,Math.min(58,state.skyMotion.y)):surfaceHeight(mesh.position.x,mesh.position.z,'sky')+.84;mesh.rotation.x=-Math.PI/2;mesh.rotation.z=0
+   }else{mesh.rotation.x=0;mesh.rotation.z=0}
+  };
+  peer.applyPose=applyPose;peers.set(id,peer);return peer
+ }
  function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='bold 44px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=12;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#5f5473';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.position.y=5.6;sprite.scale.set(4.8,1.2,1);return sprite}
  function matchTag(text,fill){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='800 48px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=13;ctx.strokeStyle='#fffaf4';ctx.strokeText(text,384,96);ctx.fillStyle=fill;ctx.fillText(text,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.center.set(.5,1);sprite.position.y=.42;sprite.scale.set(3.9,.98,1);return sprite}
  function disposeTag(parent,tag){if(!tag)return;parent.remove(tag);tag.material.map.dispose();tag.material.dispose()}

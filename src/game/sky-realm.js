@@ -2,6 +2,8 @@ import * as T from 'three';
 import { createCloudBed } from '../models/cloud-bed.js';
 
 const isDaytime=timestamp=>{const hour=new Date(timestamp).getHours();return hour>=6&&hour<18};
+// Shared by local and remote animation so every Song-i rolls on the same rug.
+export const SKY_ROLL_ZONE={x:19,z:8};
 
 export function createSkyRealm(scene){
  const root=new T.Group();root.position.y=52;scene.add(root);
@@ -51,6 +53,21 @@ export function createSkyRealm(scene){
  }
  const bedOrder=[];for(let row=0;row<5;row++)bedOrder.push(...[2,1,3,0,4,5].map(column=>row*6+column));
 
+ // A dedicated rolling area beside the beds. The flattened shapes keep the
+ // rug soft and readable from above while still looking like Song-i's face.
+ const rollZone=new T.Group();rollZone.position.set(SKY_ROLL_ZONE.x,.10,SKY_ROLL_ZONE.z);root.add(rollZone);
+ const rugPurple=new T.MeshStandardMaterial({color:'#bca5df',roughness:.96});
+ const rugFace=new T.MeshStandardMaterial({color:'#fff5e9',roughness:1});
+ const rugEye=new T.MeshStandardMaterial({color:'#65507d',roughness:.8});
+ const rugPink=new T.MeshStandardMaterial({color:'#f2aebb',roughness:.92});
+ const rugBase=add(rollZone,new T.CylinderGeometry(6.2,6.2,.13,48),rugPurple,[0,0,0]);
+ const head=add(rollZone,new T.SphereGeometry(1,32,18),rugPurple,[0,.12,0]);head.scale.set(5.75,.12,4.55);
+ const face=add(rollZone,new T.SphereGeometry(1,32,18),rugFace,[0,.25,.02]);face.scale.set(4.15,.105,3.1);
+ [[-1.35,.48,.28],[1.35,.48,.28]].forEach(([x,y,z])=>{const eye=add(rollZone,new T.SphereGeometry(1,16,12),rugEye,[x,y,z]);eye.scale.set(.33,.07,.66)});
+ [[-2.55,.40,-.18],[2.55,.40,-.18]].forEach(([x,y,z])=>{const cheek=add(rollZone,new T.SphereGeometry(1,16,12),rugPink,[x,y,z]);cheek.scale.set(.52,.06,.32)});
+ const smile=[];for(let i=0;i<=12;i++){const t=i/12,angle=Math.PI*.12+Math.PI*.76*t;smile.push(new T.Vector3(Math.cos(angle)*1.02,.49,-.42+Math.sin(angle)*.54))}add(rollZone,new T.TubeGeometry(new T.CatmullRomCurve3(smile),16,.12,7,false),rugEye,[0,0,0]);
+ const fringe=add(rollZone,new T.SphereGeometry(1,10,8),rugPurple,[0,.32,3.55]);fringe.scale.set(1.22,.09,.92);
+
  const dayGroup=new T.Group();root.add(dayGroup);
  const sun=new T.Group();sun.position.set(-13,15,-19);dayGroup.add(sun);add(sun,new T.SphereGeometry(2.2,20,16),new T.MeshStandardMaterial({color:'#fff0ac',emissive:'#ffd36a',emissiveIntensity:1.25}),[0,0,0]);const sunLight=new T.PointLight('#ffe7a5',15,58,2);sun.add(sunLight);
  const rainbow=new T.Group();rainbow.position.set(0,4,-31);dayGroup.add(rainbow);
@@ -67,5 +84,5 @@ export function createSkyRealm(scene){
 
  let lastTheme='';
  function update(timestamp){const day=isDaytime(timestamp);const theme=day?'day':'night';if(theme!==lastTheme){lastTheme=theme;dayGroup.visible=day;starGroup.visible=!day;worldBaseMaterial.color.set(day?'#f2f7ff':'#151a35');skyMaterial.color.set(day?'#aee2ff':'#10162f')}if(starGroup.visible)starGroup.children.forEach(star=>{if(star.userData.phase!==undefined)star.scale.setScalar(.72+.45*Math.sin(timestamp*.002+star.userData.phase))});ring.rotation.z+=.004;portal.position.y=12.45+Math.sin(timestamp*.0014)*.12}
- return {root,portal,beds,bedOrder,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
+ return {root,portal,beds,bedOrder,rollZone:SKY_ROLL_ZONE,floorY:52.18,update,enter(){portal.visible=false},leave(){portal.visible=true}};
 }
