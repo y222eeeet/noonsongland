@@ -211,3 +211,11 @@ export function createSongi() {
   };
   return root;
 }
+
+// Seat height describes the cushion surface, rather than the avatar's feet.
+export function applyBenchPose(avatar,seatY){
+ avatar.position.y=seatY-1.02;
+ const parts=avatar.userData.parts;
+ parts.leg0.rotation.x=parts.leg1.rotation.x=-Math.PI/2;
+ parts.arm0.rotation.x=parts.arm1.rotation.x=-.22;
+}

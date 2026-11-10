@@ -24,7 +24,7 @@ export function addCampusFurniture(scene,obstacles,M){
  });
  BENCH_SPOTS.forEach(([x,z],index)=>{
   const bench=new T.Group();bench.name='lower-road-bench';bench.position.set(x,.05,z+.25);root.add(bench);
-  const seat={id:`campus-bench-${index}`,x,z:z+.25,y:.84,rotation:Math.PI};bench.userData.benchSeat=seat;
+  const seat={id:`campus-bench-${index}`,x,z:z+.25,y:.93,rotation:0};bench.userData.benchSeat=seat;
   mesh(bench,new T.BoxGeometry(3.8,.20,.8),M.pink,0,.78,0);
   mesh(bench,new T.BoxGeometry(3.8,.8,.16),M.lav,0,1.20,-.35);
   for(const side of [-1,1])mesh(bench,new T.BoxGeometry(.18,.7,.6),trunk,side*1.4,.35,0);
