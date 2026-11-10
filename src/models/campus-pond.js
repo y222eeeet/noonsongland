@@ -33,7 +33,7 @@ export function addCampusPond(scene,M){
  // Keep the side-road opening, the stair foot, and the bridge entrance unobstructed.
  border(COURT_OUTLINE[0],COURT_OUTLINE[1]);
  for(const [i,j] of [[3,4],[4,5],[5,6],[7,8]])border(COURT_OUTLINE[i],COURT_OUTLINE[j]);
- border(COURT_OUTLINE[6],[B.x1+.16,10.9]);border([B.x0-.16,10.9],COURT_OUTLINE[7]);
+ border([B.x0-.16,10.9],COURT_OUTLINE[7]);
  border(COURT_OUTLINE[8],[-11.4,4.5]);
  // Low banks outline the pond but leave both bridge approaches open.
  for(let i=0;i<POND_OUTLINE.length;i++){
