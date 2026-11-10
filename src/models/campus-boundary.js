@@ -27,5 +27,27 @@ export function extendSmokingBoundary(scene,obstacles,M){
   ]){const part=new T.Mesh(geometry,material);part.position.set(...position);part.castShadow=part.receiveShadow=true;bench.add(part)}
   obstacles.push({x,z,w:.55,h:1.5});
  }
+ // Six existing benches frame a second pavilion without closing the side aisles.
+ const pavilion=new T.Group();pavilion.name='saehim-smoking-pavilion';
+ pavilion.position.set(-85.5,ROUTES.upper,33);pavilion.scale.setScalar(1.3);group.add(pavilion);
+ function pavilionPart(geometry,material,x,y,z){const part=new T.Mesh(geometry,material);part.position.set(x,y,z);part.castShadow=part.receiveShadow=true;pavilion.add(part);return part;}
+ pavilionPart(new T.CylinderGeometry(3.6,3.8,.2,8),M.cream,0,.1,0);
+ const roof=pavilionPart(new T.ConeGeometry(4.4,2.1,4),M.pink,0,4.15,0);roof.rotation.y=Math.PI/4;
+ pavilionPart(new T.BoxGeometry(6.1,.23,6.1),wood,0,3.12,0);
+ for(const x of [-2.7,2.7])for(const z of [-2.7,2.7]){
+  pavilionPart(new T.CylinderGeometry(.14,.17,3,8),wood,x,1.65,z);
+  obstacles.push({x:-85.5+x*1.3,z:33+z*1.3,r:.28});
+ }
+ // Keep the six benches and their side aisles around the second pavilion.
+ const pavilion=new T.Group();pavilion.name='saehim-smoking-pavilion';
+ pavilion.position.set(-85.5,ROUTES.upper,33);pavilion.scale.setScalar(1.3);group.add(pavilion);
+ function pavilionPart(geometry,material,x,y,z){const part=new T.Mesh(geometry,material);part.position.set(x,y,z);part.castShadow=part.receiveShadow=true;pavilion.add(part);return part;}
+ pavilionPart(new T.CylinderGeometry(3.6,3.8,.2,8),M.cream,0,.1,0);
+ const roof=pavilionPart(new T.ConeGeometry(4.4,2.1,4),M.pink,0,4.15,0);roof.rotation.y=Math.PI/4;
+ pavilionPart(new T.BoxGeometry(6.1,.23,6.1),wood,0,3.12,0);
+ for(const x of [-2.7,2.7])for(const z of [-2.7,2.7]){
+  pavilionPart(new T.CylinderGeometry(.14,.17,3,8),wood,x,1.65,z);
+  obstacles.push({x:-85.5+x*1.3,z:33+z*1.3,r:.28});
+ }
  return group;
 }
