@@ -147,17 +147,15 @@ function addSmokingIcon(scene,{x,y,z,rotation=0,scale=1}){
 
 export function addGroundWayfinding(scene){
  // Wayfinding begins only once Song-i reaches the upper courtyard. The lower
- // yard stays visually clear; three larger arrows cover the upper route.
+ // yard stays visually clear; the tree marker leads to one clear junction.
  const upperY=10.84;
- [
-  // The first marker is by the upper-courtyard trees, then the two markers
-  // lead through the Myungshin walk to the smoking area.
-  [-33,-16,Math.PI],[-48,-11,Math.PI],[-69,-19,Math.PI]
- ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:upperY,z,rotation,scale:1.45}));
- addSmokingIcon(scene,{x:-81,y:upperY+.025,z:-23.3,rotation:0,scale:1.25});
-
- // Board faces west, so turn the lettering across its front approach.
- addText(scene,{text:'방명록',x:-48.25,y:upperY,z:7,rotation:-Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-ground-label'});
+ // The tree-side marker and forward arrow are on one line. At the second
+ // marker, left goes to the guestbook and straight continues smoking.
+ addArrow(scene,{x:-33,y:upperY,z:-16,rotation:Math.PI,scale:1.45});
+ addArrow(scene,{x:-46,y:upperY,z:-16,rotation:Math.PI,scale:1.45});
+ addArrow(scene,{x:-47.8,y:upperY,z:-11.7,rotation:Math.PI/2,scale:1.18});
+ addText(scene,{text:'방명록',x:-48,y:upperY,z:-7.7,rotation:-Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-turn-ground-label'});
+ addSmokingIcon(scene,{x:-58.5,y:upperY+.025,z:-16,rotation:0,scale:1.25});
  // This sits immediately below the cloud portal, on the same upper terrace.
  // The portal is approached from the stair side (+Z), so keep the reading
  // direction facing that approach rather than reversing it across the floor.
