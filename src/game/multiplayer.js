@@ -14,7 +14,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  const raycaster=new T.Raycaster(),pointer=new T.Vector2(),midpoint=new T.Vector3(),toward=new T.Vector3(),cameraOffset=new T.Vector3(),rollCenter=new T.Vector3(),rollOffset=new T.Vector3();
  let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false;
  let channel,identity,ready=false,lastSend=0,sequence=0,retryAt=0;
- let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false,frameNumber=0;
+ let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false;
  const queued=[];
 
  const requestButton=document.createElement('button');
@@ -47,7 +47,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   // directional-light pass for every connected player without helping gameplay.
   mesh.traverse(part=>{if(part.isMesh){part.castShadow=false;part.receiveShadow=false}});
   scene.add(mesh);
-  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,detailTick:0};
+  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null};
   const applyPose=()=>{
    const state=peer.state;
    if(state?.realm==='sky'&&state.skyPose==='roll'){
@@ -104,12 +104,11 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   if(ready&&!document.hidden){
    const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
    const moving=!lastPosition||Math.hypot(state.x-lastPosition.x,state.z-lastPosition.z)>.001||Math.abs(state.rotation-lastPosition.rotation)>.001;
-   // 20 snapshots/sec remains smooth with interpolation, and avoids a crowded
-   // room generating 30 broadcasts per person every second.
-   const interval=moving||state.walking||state.action!=='idle'||state.smoking||state.swimming?(1000/20):500;
+   // Keep the original 30Hz movement stream: this is the quality floor for
+   // nearby Song-i movement and interaction animation.
+   const interval=moving||state.walking||state.action!=='idle'||state.smoking||state.swimming?(1000/30):500;
    if(!sending&&(now-lastSend>=interval||action!==lastAction)){lastAction=action;lastPosition={x:state.x,z:state.z,rotation:state.rotation};void broadcast()}
   }
-  frameNumber++;
   for(const peer of peers.values()){
    if(!peer.state){peer.mesh.visible=false;peer.effects.hide();continue}
    const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,swimming:false,held:0}:peer.state,m=peer.mesh;
@@ -118,19 +117,14 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
    // the local visual neighbourhood. They restore immediately on approach.
    if((s.realm!==state.realm&&!matched)||distanceSq>68*68&&!matched){m.visible=false;peer.effects.hide();continue}
    m.visible=true;
-   const near=matched||distanceSq<27*27;
-   // Only distant-but-visible avatars skip fine facial/effect work. Their
-   // position still interpolates every frame, so walking remains fluid.
-   const detailFrame=near||((frameNumber+peer.detailTick++)%3===0);
    const alpha=1-Math.exp(-dt*60);
    m.position.x+=(s.x-m.position.x)*alpha;m.position.z+=(s.z-m.position.z)*alpha;m.position.y=surfaceHeight(m.position.x,m.position.z,s.realm)+.07;
    m.rotation.y+=Math.atan2(Math.sin(s.rotation-m.rotation.y),Math.cos(s.rotation-m.rotation.y))*alpha;
-   if(!detailFrame)continue;
    const held=s.held+(s.action==='inhale'?(now-peer.last)/1000:0);
    m.scale.setScalar(1+(s.action==='inhale'?Math.min(held/20,.22):s.action==='exhale'?.15:0));
    const swing=(s.walking||s.skyMotion?.walk===true)&&now-peer.last<2000?Math.sin(now/100)*.7:0,parts=m.userData.parts;
    parts.arm0.rotation.x=parts.leg1.rotation.x=swing;parts.arm1.rotation.x=parts.leg0.rotation.x=-swing;
-   peer.effects.update(s,now,(now-peer.last)/1000,dt*(near?1:3));peer.applyPose();
+   peer.effects.update(s,now,(now-peer.last)/1000,dt);peer.applyPose();
   }
  }
  function updateBenchAvatars(){for(const peer of peers.values()){const seatY=peer.state?.seatedY;if(peer.mesh.visible&&peer.state?.seatedBench&&Number.isFinite(seatY))applyBenchPose(peer.mesh,seatY)}}
