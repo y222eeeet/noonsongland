@@ -109,6 +109,28 @@ function addArrow(scene,{x,y,z,rotation=0,scale=1}){
  const arrow=new T.Mesh(arrowGeometry,arrowMaterial);arrow.rotation.x=-Math.PI/2;arrow.scale.setScalar(scale);arrow.renderOrder=1;group.add(arrow);scene.add(group);
  return group;
 }
+function addSmokingIcon(scene,{x,y,z,rotation=0,scale=1}){
+ const group=new T.Group();group.name='smoking-area-ground-icon';group.position.set(x,y,z);group.rotation.y=rotation;scene.add(group);
+ const ink=new T.MeshStandardMaterial({color:'#40364e',roughness:.72});
+ const cigarette=new T.Mesh(new T.BoxGeometry(3.35*scale,.13,.38*scale),ink);
+ cigarette.position.set(-.38*scale,.075,.50*scale);cigarette.castShadow=cigarette.receiveShadow=true;group.add(cigarette);
+ // Three filter stripes match the reference while remaining recognisable from
+ // the top-down camera as a single smoking-area pictogram.
+ for(const offset of [.78,1.03,1.28]){
+  const stripe=new T.Mesh(new T.BoxGeometry(.12*scale,.14,.42*scale),ink);
+  stripe.position.set(offset*scale,.08,.50*scale);stripe.castShadow=stripe.receiveShadow=true;group.add(stripe);
+ }
+ const smoke=(points,radius)=>{
+  const curve=new T.CatmullRomCurve3(points.map(([px,pz])=>new T.Vector3(px*scale,.15,pz*scale)));
+  const mesh=new T.Mesh(new T.TubeGeometry(curve,32,radius*scale,7,false),ink);
+  mesh.castShadow=mesh.receiveShadow=true;group.add(mesh);
+ };
+ // Two soft curls reproduce the reference's rising smoke without relying on
+ // a flat texture or a font glyph.
+ smoke([[.82,.73],[.82,.18],[.58,-.06],[.16,-.08],[-.10,-.25],[-.08,-.55],[.16,-.70],[.48,-.67],[.66,-.48],[.55,-.22]],.105);
+ smoke([[-.24,-.30],[-.52,-.44],[-.68,-.72],[-.58,-.99],[-.34,-1.15],[-.10,-1.05],[-.12,-.78]],.105);
+ return group;
+}
 
 export function addGroundWayfinding(scene){
  // Wayfinding begins only once Song-i reaches the upper courtyard. The lower
@@ -119,7 +141,7 @@ export function addGroundWayfinding(scene){
   // lead through the Myungshin walk to the smoking area.
   [-33,-16,Math.PI],[-48,-11,Math.PI],[-69,-19,Math.PI]
  ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:upperY,z,rotation,scale:1.45}));
- addText(scene,{text:'흡연구역',x:-81,y:upperY,z:-23.3,rotation:0,color:'#9a6bb4',scale:.9,name:'smoking-area-ground-label'});
+ addSmokingIcon(scene,{x:-81,y:upperY+.025,z:-23.3,rotation:0,scale:1.25});
 
  // Board faces west, so turn the lettering across its front approach.
  addText(scene,{text:'방명록',x:-48.25,y:upperY,z:7,rotation:Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-ground-label'});
