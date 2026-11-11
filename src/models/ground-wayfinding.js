@@ -86,14 +86,16 @@ function addText(scene,{text,x,y,z,rotation=0,color='#8065aa',scale=1,name}){
  group.add(makeText(text,color,scale));scene.add(group);
  return group;
 }
-function addArrow(scene,{x,y,z,rotation=0,color='#a47ac4',scale=1}){
- const group=new T.Group();group.name='smoking-wayfinding-arrow';group.position.set(x,y,z);group.rotation.y=rotation;
- const material=new T.MeshStandardMaterial({color,roughness:.7});
- roundedStroke(group,material,-.20,0,1.2*scale,0,.14*scale);
- const head=new T.Mesh(new T.ConeGeometry(.43*scale,.82*scale,4),material);
- head.position.set(.62*scale,.10,0);
- head.quaternion.setFromUnitVectors(V3_UP,new T.Vector3(1,0,0));
- head.castShadow=head.receiveShadow=true;group.add(head);scene.add(group);
+const arrowShape=new T.Shape();
+arrowShape.moveTo(-1.32,-.38);arrowShape.lineTo(.20,-.38);arrowShape.lineTo(.20,-.76);
+arrowShape.lineTo(1.35,0);arrowShape.lineTo(.20,.76);arrowShape.lineTo(.20,.38);arrowShape.lineTo(-1.32,.38);arrowShape.closePath();
+const arrowGeometry=new T.ShapeGeometry(arrowShape);
+const arrowMaterial=new T.MeshBasicMaterial({color:'#a47ac4',transparent:true,opacity:.46,depthWrite:false,side:T.DoubleSide});
+function addArrow(scene,{x,y,z,rotation=0,scale=1}){
+ // Unlike the raised lettering, wayfinding arrows are deliberately flat. They
+ // read as a soft floor decal rather than an object in the walking path.
+ const group=new T.Group();group.name='smoking-wayfinding-arrow';group.position.set(x,y+.012,z);group.rotation.y=rotation;
+ const arrow=new T.Mesh(arrowGeometry,arrowMaterial);arrow.rotation.x=-Math.PI/2;arrow.scale.setScalar(scale);arrow.renderOrder=1;group.add(arrow);scene.add(group);
  return group;
 }
 
@@ -102,11 +104,11 @@ export function addGroundWayfinding(scene){
  // lower court → stair landing → upper Myungshin walk → smoking court.
  const lowerY=.06,upperY=10.84;
  [
-  [-7,6,Math.PI],[-18,4,Math.PI],[-29,1.6,Math.PI*-.78],
+  [-10,5.5,Math.PI],[-28,1.6,Math.PI*-.78],
   // Keep markers off the stepped surface itself: the landing markers make
   // the climb obvious without floating between stair heights.
-  [-44,-10,Math.PI],[-51,-11,Math.PI],[-63,-16,Math.PI],[-73,-21,Math.PI]
- ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:x<-39?upperY:lowerY,z,rotation}));
+  [-48,-11,Math.PI],[-69,-19,Math.PI]
+ ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:x<-39?upperY:lowerY,z,rotation,scale:1.45}));
  addText(scene,{text:'흡연구역',x:-81,y:upperY,z:-23.3,rotation:0,color:'#9a6bb4',scale:.9,name:'smoking-area-ground-label'});
 
  // Board faces west, so turn the lettering across its front approach.
