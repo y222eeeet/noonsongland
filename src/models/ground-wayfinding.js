@@ -33,7 +33,7 @@ function strokes(parent,material,jamo,x,z,scale=1){
   case 'ㄴ':v(-.43,0,.62);h(-.15,.30,.57);break;
   case 'ㄹ':h(0,-.31,.68);v(.34,-.155,.31);h(0,0,.68);v(-.34,.155,.31);h(0,.31,.68);break;
   case 'ㅁ':h(0,-.31,.68);h(0,.31,.68);v(-.34,0,.62);v(.34,0,.62);break;
-  case 'ㅂ':h(0,-.31,.68);h(0,.0,.68);h(0,.31,.68);v(-.34,0,.62);v(.34,0,.62);break;
+  case 'ㅂ':h(0,0,.68);h(0,.31,.68);v(-.34,0,.62);v(.34,0,.62);break;
   case 'ㅇ':o(0,0,.31);break;
   case 'ㅈ':h(0,-.29,.68);h(0,.02,.68);v(0,.18,.35);break;
   case 'ㅊ':h(0,-.30,.68);h(0,.02,.68);v(0,.18,.34);h(0,-.55,.33);break;
@@ -114,17 +114,24 @@ const arrowShape=new T.Shape();
 arrowShape.moveTo(-1.32,-.38);arrowShape.lineTo(.20,-.38);arrowShape.lineTo(.20,-.76);
 arrowShape.lineTo(1.35,0);arrowShape.lineTo(.20,.76);arrowShape.lineTo(.20,.38);arrowShape.lineTo(-1.32,.38);arrowShape.closePath();
 const arrowGeometry=new T.ShapeGeometry(arrowShape);
+const junctionShape=new T.Shape();
+junctionShape.moveTo(-1.32,-.22);
+for(const [x,y] of [[.45,-.22],[.45,-.58],[1.35,0],[.45,.58],[.45,.22],[-.12,.22],[-.12,.80],[.17,.80],[-.32,1.52],[-.81,.80],[-.52,.80],[-.52,.22],[-1.32,.22]]){
+ junctionShape.lineTo(x,y);
+}
+junctionShape.closePath();
+const junctionArrowGeometry=new T.ShapeGeometry(junctionShape);
 const arrowMaterial=new T.MeshBasicMaterial({color:'#a47ac4',transparent:true,opacity:.46,depthWrite:false,side:T.DoubleSide});
-function addArrow(scene,{x,y,z,rotation=0,scale=1}){
+function addArrow(scene,{x,y,z,rotation=0,scale=1,geometry=arrowGeometry}){
  // Unlike the raised lettering, wayfinding arrows are deliberately flat. They
  // read as a soft floor decal rather than an object in the walking path.
  const group=new T.Group();group.name='smoking-wayfinding-arrow';group.position.set(x,y+.012,z);group.rotation.y=rotation;
- const arrow=new T.Mesh(arrowGeometry,arrowMaterial);arrow.rotation.x=-Math.PI/2;arrow.scale.setScalar(scale);arrow.renderOrder=1;group.add(arrow);scene.add(group);
+ const arrow=new T.Mesh(geometry,arrowMaterial);arrow.rotation.x=-Math.PI/2;arrow.scale.setScalar(scale);arrow.renderOrder=1;group.add(arrow);scene.add(group);
  return group;
 }
 function addSmokingIcon(scene,{x,y,z,rotation=0,scale=1}){
  const group=new T.Group();group.name='smoking-area-ground-icon';group.position.set(x,y,z);group.rotation.y=rotation;scene.add(group);
- const ink=new T.MeshStandardMaterial({color:'#40364e',roughness:.72});
+ const ink=new T.MeshStandardMaterial({color:'#8065aa',roughness:.72,metalness:.02});
  const cigarette=new T.Mesh(new T.BoxGeometry(3.35*scale,.13,.38*scale),ink);
  cigarette.position.set(-.38*scale,.075,.50*scale);cigarette.castShadow=cigarette.receiveShadow=true;group.add(cigarette);
  // Three filter stripes match the reference while remaining recognisable from
@@ -152,10 +159,9 @@ export function addGroundWayfinding(scene){
  // The tree-side marker and forward arrow are on one line. At the second
  // marker, left goes to the guestbook and straight continues smoking.
  addArrow(scene,{x:-33,y:upperY,z:-16,rotation:Math.PI,scale:1.45});
- addArrow(scene,{x:-46,y:upperY,z:-16,rotation:Math.PI,scale:1.45});
- addArrow(scene,{x:-47.8,y:upperY,z:-11.7,rotation:Math.PI/2,scale:1.18});
- addText(scene,{text:'방명록',x:-48,y:upperY,z:-7.7,rotation:-Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-turn-ground-label'});
- addSmokingIcon(scene,{x:-58.5,y:upperY+.025,z:-16,rotation:0,scale:1.25});
+ addArrow(scene,{x:-46,y:upperY,z:-16,rotation:Math.PI,scale:1.45,geometry:junctionArrowGeometry});
+ addText(scene,{text:'방명록',x:-48,y:upperY,z:-7.7,rotation:-Math.PI,color:'#8065aa',scale:.82,name:'guestbook-turn-ground-label'});
+ addSmokingIcon(scene,{x:-58.5,y:upperY+.025,z:-16,rotation:Math.PI/2,scale:1.25});
  // This sits immediately below the cloud portal, on the same upper terrace.
  // The portal is approached from the stair side (+Z), so keep the reading
  // direction facing that approach rather than reversing it across the floor.
