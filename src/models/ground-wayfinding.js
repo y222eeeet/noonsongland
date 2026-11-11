@@ -109,15 +109,14 @@ function addArrow(scene,{x,y,z,rotation=0,scale=1}){
 }
 
 export function addGroundWayfinding(scene){
- // The route deliberately follows the first walkable route from the spawn:
- // lower court → stair landing → upper Myungshin walk → smoking court.
- const lowerY=.06,upperY=10.84;
+ // Wayfinding begins only once Song-i reaches the upper courtyard. The lower
+ // yard stays visually clear; three larger arrows cover the upper route.
+ const upperY=10.84;
  [
-  [-10,5.5,Math.PI],[-28,1.6,Math.PI*-.78],
-  // Keep markers off the stepped surface itself: the landing markers make
-  // the climb obvious without floating between stair heights.
-  [-48,-11,Math.PI],[-69,-19,Math.PI]
- ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:x<-39?upperY:lowerY,z,rotation,scale:1.45}));
+  // The first marker is by the upper-courtyard trees, then the two markers
+  // lead through the Myungshin walk to the smoking area.
+  [-33,-16,Math.PI],[-48,-11,Math.PI],[-69,-19,Math.PI]
+ ].forEach(([x,z,rotation])=>addArrow(scene,{x,y:upperY,z,rotation,scale:1.45}));
  addText(scene,{text:'흡연구역',x:-81,y:upperY,z:-23.3,rotation:0,color:'#9a6bb4',scale:.9,name:'smoking-area-ground-label'});
 
  // Board faces west, so turn the lettering across its front approach.
