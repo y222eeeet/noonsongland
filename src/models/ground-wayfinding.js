@@ -37,7 +37,9 @@ function strokes(parent,material,jamo,x,z,scale=1){
   case 'ㅇ':o(0,0,.31);break;
   case 'ㅈ':h(0,-.29,.68);h(0,.02,.68);v(0,.18,.35);break;
   case 'ㅊ':h(0,-.30,.68);h(0,.02,.68);v(0,.18,.34);h(0,-.55,.33);break;
-  case 'ㅋ':v(-.34,0,.62);h(-.05,-.22,.50);h(-.05,.22,.50);break;
+  // Give ㅋ a full-height spine and two long arms. At a low camera angle the
+  // shorter former strokes read like broken dots rather than the consonant.
+  case 'ㅋ':v(-.34,0,.70);h(0,-.27,.68);h(0,.27,.68);break;
   case 'ㅎ':o(0,-.10,.23);h(0,-.43,.64);h(0,.32,.64);break;
   case 'ㅏ':v(-.08,0,.72);h(.16,-.12,.38);break;
   case 'ㅣ':v(0,0,.72);break;
@@ -110,5 +112,7 @@ export function addGroundWayfinding(scene){
  // Board faces west, so turn the lettering across its front approach.
  addText(scene,{text:'방명록',x:-48.25,y:upperY,z:7,rotation:Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-ground-label'});
  // This sits immediately below the cloud portal, on the same upper terrace.
- addText(scene,{text:'클릭!',x:0,y:upperY,z:-14.25,rotation:Math.PI,color:'#9c7ec8',scale:1,name:'sky-portal-ground-label'});
+ // The portal is approached from the stair side (+Z), so keep the reading
+ // direction facing that approach rather than reversing it across the floor.
+ addText(scene,{text:'클릭!',x:0,y:upperY,z:-14.25,rotation:0,color:'#9c7ec8',scale:1,name:'sky-portal-ground-label'});
 }
