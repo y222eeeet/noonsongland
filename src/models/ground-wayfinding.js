@@ -54,6 +54,19 @@ function strokes(parent,material,jamo,x,z,scale=1){
 }
 function makeSyllable(char,material,scale=1){
  const group=new T.Group(),parts=syllables[char];
+ if(['c','l','i','k'].includes(char)){
+  const h=(x,z,length=.58)=>roundedStroke(group,material,x*scale,z*scale,length*scale,0,.085*scale);
+  const v=(x,z,length=.72)=>roundedStroke(group,material,x*scale,z*scale,length*scale,Math.PI/2,.085*scale);
+  if(char==='c'){h(0,-.31,.62);v(-.31,0,.62);h(0,.31,.62)}
+  if(char==='l')v(0,0,.78);
+  if(char==='i'){v(0,.12,.45);circle(group,material,0,-.42,.09*scale)}
+  if(char==='k'){
+   v(-.28,0,.78);
+   roundedStroke(group,material,.08*scale,-.17*scale,.60*scale,-.56,.085*scale);
+   roundedStroke(group,material,.08*scale,.17*scale,.60*scale,.56,.085*scale);
+  }
+  return group;
+ }
  if(char==='!'){
   roundedStroke(group,material,0,-.14,.42,Math.PI/2,.095*scale);
   circle(group,material,0,.35,.10*scale);
@@ -148,5 +161,5 @@ export function addGroundWayfinding(scene){
  // This sits immediately below the cloud portal, on the same upper terrace.
  // The portal is approached from the stair side (+Z), so keep the reading
  // direction facing that approach rather than reversing it across the floor.
- addText(scene,{text:'클릭!',x:0,y:upperY,z:-14.25,rotation:0,color:'#9c7ec8',scale:1,name:'sky-portal-ground-label'});
+ addText(scene,{text:'click',x:0,y:upperY,z:-14.25,rotation:0,color:'#9c7ec8',scale:1,name:'sky-portal-ground-label'});
 }
