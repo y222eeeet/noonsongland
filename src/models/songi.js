@@ -1,6 +1,10 @@
 import * as T from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
+// The snowflake shell, cranium and curved face are expensive to tessellate.
+// They never change shape, so all Song-i instances share one immutable set.
+let sharedCoreGeometry;
+
 // A continuous beveled snowflake shell; front is +Z, Y remains upright.
 export function createSongi() {
   const root = new T.Group(), parts = {};
@@ -15,6 +19,8 @@ export function createSongi() {
     const g=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:5,steps:12,curveSegments:8});
     g.translate(0,0,-depth/2); return g;
   }
+  let shell,cranium,fg;
+  if(sharedCoreGeometry){({shell,cranium,fg}=sharedCoreGeometry)}else{
   // Open notches retain a visible gap after beveling, rather than thin slits.
   const right=[
     [0,1.64],[.26,1.44],[.36,1.25],
@@ -32,10 +38,10 @@ export function createSongi() {
   // The additional volume grows backwards; the rear tapers into the bevel.
   // The branches have substantial rounded thickness; the cranium supplies
   // the domed front/back volume rather than stretching every branch into a slab.
-  const shell=plate(outline,.58,.14);
+  shell=plate(outline,.58,.14);
   shell.translate(0,0,-.055);
   parts.head=mesh(shell,lavender,[0,3.12,0]);
-  const cranium=new T.SphereGeometry(1,32,20);
+  cranium=new T.SphereGeometry(1,32,20);
   const cp=cranium.attributes.position;
   for(let i=0;i<cp.count;i++) {
     const x=cp.getX(i),y=cp.getY(i),z=cp.getZ(i);
@@ -56,7 +62,7 @@ export function createSongi() {
   faceShape.bezierCurveTo(.85,-.15,1,-.10,1,.03);
   faceShape.bezierCurveTo(.99,.24,.68,.59,.34,.74);
   faceShape.bezierCurveTo(.16,.84,.15,.60,0,.65);
-  let fg=new T.ExtrudeGeometry(faceShape,{depth:.045,bevelEnabled:true,bevelThickness:.045,bevelSize:.035,bevelSegments:3,curveSegments:12});
+  fg=new T.ExtrudeGeometry(faceShape,{depth:.045,bevelEnabled:true,bevelThickness:.045,bevelSize:.035,bevelSegments:3,curveSegments:12});
   // Subdivide the cap as well as its rim so the face is truly curved.
   let triangles=fg.toNonIndexed ? (fg.index?fg.toNonIndexed():fg) : fg;
   for(let pass=0;pass<3;pass++) {
@@ -81,6 +87,9 @@ export function createSongi() {
   }
   fg=mergeVertices(fg, .0001);
   fg.computeVertexNormals();
+  [shell,cranium,fg].forEach(geometry=>geometry.userData.sharedSongiGeometry=true);
+  sharedCoreGeometry={shell,cranium,fg};
+  }
   const faceMaterial=cream.clone();
   parts.face=mesh(fg,faceMaterial,[0,2.99,.46]);
   for (let i=0;i<2;i++) {

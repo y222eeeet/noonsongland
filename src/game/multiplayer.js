@@ -12,8 +12,8 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  const peers=new Map(),connectionId=crypto.randomUUID(),selfMatchActions=createRemoteActions(localAvatar,scene);
  const runtime=scene.userData.matchRuntime||{},renderer=runtime.renderer,camera=runtime.camera,game=runtime.game;
  const raycaster=new T.Raycaster(),pointer=new T.Vector2(),midpoint=new T.Vector3(),toward=new T.Vector3(),cameraOffset=new T.Vector3(),rollCenter=new T.Vector3(),rollOffset=new T.Vector3();
- let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false;
- let channel,identity,ready=false,lastSend=0,sequence=0,retryAt=0;
+ let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false,lastSentSighEvent=-1;
+ let channel,channelRealm='',identity,ready=false,lastSend=0,sequence=0,retryAt=0;
  let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false;
  const queued=[];
 
@@ -32,14 +32,20 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function closeModal(){modal.style.display='none';pendingRequest=null}
 
  function reconnect(current){if(disposed||channel!==current)return;ready=false;retryAt=performance.now()+5000}
- async function broadcast(event='state',payload,important=false){
+ async function broadcast(event='state',payload,important=false,fullState=false){
   const current=channel;if(!ready||!current)return false;
   if(sending){if(important)queued.push({event,payload});return false}
   sending=true;lastSend=performance.now();
-  try{const result=await current.send({type:'broadcast',event,payload:payload??{...readState(),connectionId,seq:++sequence}});if(result!=='ok')reconnect(current);return result==='ok'}catch{reconnect(current);return false}finally{sending=false;const next=queued.shift();if(next)void broadcast(next.event,next.payload,true)}
+  const state=payload??{...readState(),connectionId,seq:++sequence};
+  // Origin/profile data remains constant throughout one sigh. Send it with the
+  // event (and when a newly joined peer asks for a full snapshot), not in every
+  // 30Hz movement packet.
+  if(event==='state'&&!fullState&&state.sighEvent===lastSentSighEvent)delete state.sighVisual;
+  else if(event==='state')lastSentSighEvent=state.sighEvent;
+  try{const result=await current.send({type:'broadcast',event,payload:state});if(result!=='ok')reconnect(current);return result==='ok'}catch{reconnect(current);return false}finally{sending=false;const next=queued.shift();if(next)void broadcast(next.event,next.payload,true)}
  }
  function sendTargeted(event,to,extra={}){return broadcast(event,{to,from:connectionId,...extra},true)}
- function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>g.dispose());materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id);if(selectedPeerId===id){selectedPeerId='';requestButton.hidden=true}if(matdam?.partnerId===id)endMatdamView()}
+ function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>{if(!g.userData.sharedSongiGeometry)g.dispose()});materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id);if(selectedPeerId===id){selectedPeerId='';requestButton.hidden=true}if(matdam?.partnerId===id)endMatdamView()}
  function createPeer(id){
   if(peers.has(id)||peers.size>=100)return peers.get(id);
   const mesh=createSongi();mesh.visible=false;
@@ -47,7 +53,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   // directional-light pass for every connected player without helping gameplay.
   mesh.traverse(part=>{if(part.isMesh){part.castShadow=false;part.receiveShadow=false}});
   scene.add(mesh);
-  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null};
+  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,groundX:NaN,groundZ:NaN,groundY:0,groundRealm:''};
   const applyPose=()=>{
    const state=peer.state;
    if(state?.realm==='sky'&&state.skyPose==='roll'){
@@ -77,7 +83,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function endMatdamView(){matdam=null;clearMatchTags();selfMatchActions.hide();localAvatar.visible=!readState().smoking}
  function updateMatchTags(){if(!matdam){clearMatchTags();return}const peer=peers.get(matdam.partnerId);if(!peer?.mesh)return;if(taggedPartnerId!==matdam.partnerId){clearMatchTags();taggedPartnerId=matdam.partnerId;localMatchTag=matchTag('나','#8f6db0');remoteMatchTag=matchTag(peer.name||'상대','#5f5473');localAvatar.add(localMatchTag);peer.mesh.add(remoteMatchTag)}if(ownLabel)ownLabel.visible=false}
  function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)&&peer.last>0&&now-peer.last>120000)remove(id);for(const [id,m] of members)if(id!==connectionId){const peer=createPeer(id);if(peer)peer.name=m.name}for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state)}
- function receive(s){if(!ready||!s||s.connectionId===connectionId)return;if(![s.x,s.z,s.rotation,s.held].every(Number.isFinite)||s.x<bounds.minX||s.x>bounds.maxX||s.z<bounds.minZ||s.z>bounds.maxZ||!['idle','inhale','exhale'].includes(s.action))return;const peer=createPeer(s.connectionId);if(!peer||!Number.isSafeInteger(s.seq)||s.seq<=peer.seq)return;peer.seq=s.seq;peer.last=performance.now();peer.state={...s,realm:s.realm==='sky'?'sky':'campus',held:Math.max(0,Math.min(s.held,120))};if(!peer.mesh.visible)peer.mesh.position.set(s.x,surfaceHeight(s.x,s.z,s.realm)+.07,s.z);peer.mesh.visible=true}
+ function receive(s){if(!ready||!s||s.connectionId===connectionId)return;if(![s.x,s.z,s.rotation,s.held].every(Number.isFinite)||s.x<bounds.minX||s.x>bounds.maxX||s.z<bounds.minZ||s.z>bounds.maxZ||!['idle','inhale','exhale'].includes(s.action))return;const peer=createPeer(s.connectionId);if(!peer||!Number.isSafeInteger(s.seq)||s.seq<=peer.seq)return;peer.seq=s.seq;peer.last=performance.now();peer.state={...peer.state,...s,realm:s.realm==='sky'?'sky':'campus',held:Math.max(0,Math.min(s.held,120))};if(!peer.mesh.visible)peer.mesh.position.set(s.x,surfaceHeight(s.x,s.z,s.realm)+.07,s.z);peer.mesh.visible=true}
  function beginMatdam(partnerId){matdam={partnerId};endSent=false;requestButton.hidden=true;localAvatar.visible=true;updateMatchTags()}
  function alignLocal(position,rotation){localAvatar.position.set(position.x,surfaceHeight(position.x,position.z)+.07,position.z);localAvatar.rotation.y=rotation;localAvatar.userData.groundY=localAvatar.position.y}
  function face(from,to){return Math.atan2(to.x-from.x,to.z-from.z)}
@@ -90,13 +96,17 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  renderer?.domElement.addEventListener('pointerup',selectPeer);
  requestButton.addEventListener('click',()=>{const peer=peers.get(selectedPeerId);if(!peer?.state?.smoking){requestButton.hidden=true;return}void sendTargeted('matdam-request',selectedPeerId);requestButton.hidden=true;showToast('맞담 신청을 보냈어요.')});
  if(renderer&&camera){const baseRender=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{const peer=matdam&&peers.get(matdam.partnerId);const matched=Boolean(peer?.mesh?.visible&&readState().smoking);scene.userData.matdamCamera=matched;if(matched){midpoint.copy(localAvatar.position).add(peer.mesh.position).multiplyScalar(.5);toward.copy(peer.mesh.position).sub(localAvatar.position);toward.y=0;if(toward.lengthSq()>.01){toward.normalize();cameraOffset.set(toward.z,0,-toward.x).multiplyScalar(8.7);activeCamera.position.copy(midpoint).add(cameraOffset);activeCamera.position.y=midpoint.y+4.1;activeCamera.lookAt(midpoint.x,midpoint.y+2.15,midpoint.z)}}baseRender(activeScene,activeCamera);scene.userData.matdamCamera=false}}
- async function connect(player){identity=player;ready=false;const old=channel;channel=null;if(old)await supabase.removeChannel(old);if(identity!==player)return;const current=supabase.channel('campus:main:v1',{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});channel=current;current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast()}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});current.subscribe(async state=>{if(channel!==current||disposed)return;if(state==='SUBSCRIBED'){retryAt=0;ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(channel!==current)return;if(result!=='ok'){reconnect(current);return}sync();lastSend=0;void broadcast('request-state',{connectionId});}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state))reconnect(current)})}
+ async function connect(player){identity=player;ready=false;const realm=readState().realm==='sky'?'sky':'campus',old=channel;channel=null;channelRealm='';if(old)await supabase.removeChannel(old);if(identity!==player)return;const current=supabase.channel(`noonsongland:${realm}:v1`,{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});channel=current;channelRealm=realm;current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast('state',undefined,false,true)}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});current.subscribe(async state=>{if(channel!==current||disposed)return;if(state==='SUBSCRIBED'){retryAt=0;ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(channel!==current)return;if(result!=='ok'){reconnect(current);return}sync();lastSend=0;void broadcast('request-state',{connectionId});}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state))reconnect(current)})}
  function update(dt,now){
   const player=window.noonsongPlayer;
   if(localAvatar&&player&&ownName!==player.displayName){if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}ownName=player.displayName;ownLabel=label(ownName.slice(0,24));scene.add(ownLabel)}
   if(supabase&&player&&(!identity||player.id!==identity.id))void connect(player);
   if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}
   const state=readState();
+  // Campus and sky are independent visibility spaces. Switching worlds also
+  // switches the realtime channel, so neither side receives the other's
+  // high-frequency movement packets.
+  if(identity&&ready&&channelRealm!==state.realm)void connect(identity);
   if(ownLabel){ownLabel.scale.set(4.8,1.2,1);ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45}
   if(matdam&&!state.smoking){if(!endSent){endSent=true;void sendTargeted('matdam-end',matdam.partnerId)}endMatdamView();localAvatar.visible=true}
   if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
@@ -109,6 +119,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
    const interval=moving||state.walking||state.action!=='idle'||state.smoking||state.swimming?(1000/30):500;
    if(!sending&&(now-lastSend>=interval||action!==lastAction)){lastAction=action;lastPosition={x:state.x,z:state.z,rotation:state.rotation};void broadcast()}
   }
+  const alpha=1-Math.exp(-dt*60);
   for(const peer of peers.values()){
    if(!peer.state){peer.mesh.visible=false;peer.effects.hide();continue}
    const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,swimming:false,held:0}:peer.state,m=peer.mesh;
@@ -117,8 +128,9 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
    // the local visual neighbourhood. They restore immediately on approach.
    if((s.realm!==state.realm&&!matched)||distanceSq>68*68&&!matched){m.visible=false;peer.effects.hide();continue}
    m.visible=true;
-   const alpha=1-Math.exp(-dt*60);
-   m.position.x+=(s.x-m.position.x)*alpha;m.position.z+=(s.z-m.position.z)*alpha;m.position.y=surfaceHeight(m.position.x,m.position.z,s.realm)+.07;
+   m.position.x+=(s.x-m.position.x)*alpha;m.position.z+=(s.z-m.position.z)*alpha;
+   if(peer.groundRealm!==s.realm||Math.abs(m.position.x-peer.groundX)>.025||Math.abs(m.position.z-peer.groundZ)>.025){peer.groundX=m.position.x;peer.groundZ=m.position.z;peer.groundRealm=s.realm;peer.groundY=surfaceHeight(m.position.x,m.position.z,s.realm)+.07}
+   m.position.y=peer.groundY;
    m.rotation.y+=Math.atan2(Math.sin(s.rotation-m.rotation.y),Math.cos(s.rotation-m.rotation.y))*alpha;
    const held=s.held+(s.action==='inhale'?(now-peer.last)/1000:0);
    m.scale.setScalar(1+(s.action==='inhale'?Math.min(held/20,.22):s.action==='exhale'?.15:0));
