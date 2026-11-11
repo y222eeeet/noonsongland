@@ -159,9 +159,11 @@ export function addGroundWayfinding(scene){
  // The tree-side marker and forward arrow are on one line. At the second
  // marker, left goes to the guestbook and straight continues smoking.
  addArrow(scene,{x:-33,y:upperY,z:-16,rotation:Math.PI,scale:1.45});
- addArrow(scene,{x:-46,y:upperY,z:-16,rotation:Math.PI,scale:1.45,geometry:junctionArrowGeometry});
- addText(scene,{text:'방명록',x:-48,y:upperY,z:-7.7,rotation:-Math.PI,color:'#8065aa',scale:.82,name:'guestbook-turn-ground-label'});
- addSmokingIcon(scene,{x:-58.5,y:upperY+.025,z:-16,rotation:Math.PI/2,scale:1.25});
+ // The fork's original strokes are narrower than the tree-side arrow, so its
+ // scale is increased until both directions carry the same visual weight.
+ addArrow(scene,{x:-46,y:upperY,z:-16,rotation:Math.PI,scale:1.72,geometry:junctionArrowGeometry});
+ addText(scene,{text:'방명록',x:-48,y:upperY,z:-11.2,rotation:-Math.PI,color:'#8065aa',scale:.82,name:'guestbook-turn-ground-label'});
+ addSmokingIcon(scene,{x:-52.5,y:upperY+.025,z:-16,rotation:Math.PI/2,scale:1.25});
  // This sits immediately below the cloud portal, on the same upper terrace.
  // The portal is approached from the stair side (+Z), so keep the reading
  // direction facing that approach rather than reversing it across the floor.
