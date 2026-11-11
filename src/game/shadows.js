@@ -3,7 +3,9 @@ import * as T from 'three';
 // Keep a high-resolution local shadow volume around the player, independent
 // of world size. Cover the camera's surroundings plus off-screen casters.
 export function createWorldShadows(scene,sun){
-  const radius=56,resolution=2048,texel=radius*2/resolution;
+  // The camera never resolves the difference at this scale; halving the map
+  // leaves substantially more frame time for a busy multiplayer scene.
+  const radius=56,resolution=1024,texel=radius*2/resolution;
   const offset=new T.Vector3(-42,70,31);
   scene.add(sun.target);
   sun.shadow.mapSize.set(resolution,resolution);

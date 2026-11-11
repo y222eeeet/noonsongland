@@ -14,7 +14,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  const raycaster=new T.Raycaster(),pointer=new T.Vector2(),midpoint=new T.Vector3(),toward=new T.Vector3(),cameraOffset=new T.Vector3(),rollCenter=new T.Vector3(),rollOffset=new T.Vector3();
  let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false;
  let channel,identity,ready=false,lastSend=0,sequence=0,retryAt=0;
- let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false;
+ let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false,frameNumber=0;
  const queued=[];
 
  const requestButton=document.createElement('button');
@@ -42,8 +42,12 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>g.dispose());materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id);if(selectedPeerId===id){selectedPeerId='';requestButton.hidden=true}if(matdam?.partnerId===id)endMatdamView()}
  function createPeer(id){
   if(peers.has(id)||peers.size>=100)return peers.get(id);
-  const mesh=createSongi();mesh.visible=false;scene.add(mesh);
-  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null};
+  const mesh=createSongi();mesh.visible=false;
+  // Only the local Song-i needs a dynamic shadow. Remote shadows multiply the
+  // directional-light pass for every connected player without helping gameplay.
+  mesh.traverse(part=>{if(part.isMesh){part.castShadow=false;part.receiveShadow=false}});
+  scene.add(mesh);
+  const peer={mesh,effects:createRemoteActions(mesh,scene),seq:-1,last:0,state:null,detailTick:0};
   const applyPose=()=>{
    const state=peer.state;
    if(state?.realm==='sky'&&state.skyPose==='roll'){
@@ -87,8 +91,49 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  requestButton.addEventListener('click',()=>{const peer=peers.get(selectedPeerId);if(!peer?.state?.smoking){requestButton.hidden=true;return}void sendTargeted('matdam-request',selectedPeerId);requestButton.hidden=true;showToast('맞담 신청을 보냈어요.')});
  if(renderer&&camera){const baseRender=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{const peer=matdam&&peers.get(matdam.partnerId);const matched=Boolean(peer?.mesh?.visible&&readState().smoking);scene.userData.matdamCamera=matched;if(matched){midpoint.copy(localAvatar.position).add(peer.mesh.position).multiplyScalar(.5);toward.copy(peer.mesh.position).sub(localAvatar.position);toward.y=0;if(toward.lengthSq()>.01){toward.normalize();cameraOffset.set(toward.z,0,-toward.x).multiplyScalar(8.7);activeCamera.position.copy(midpoint).add(cameraOffset);activeCamera.position.y=midpoint.y+4.1;activeCamera.lookAt(midpoint.x,midpoint.y+2.15,midpoint.z)}}baseRender(activeScene,activeCamera);scene.userData.matdamCamera=false}}
  async function connect(player){identity=player;ready=false;const old=channel;channel=null;if(old)await supabase.removeChannel(old);if(identity!==player)return;const current=supabase.channel('campus:main:v1',{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});channel=current;current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast()}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});current.subscribe(async state=>{if(channel!==current||disposed)return;if(state==='SUBSCRIBED'){retryAt=0;ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(channel!==current)return;if(result!=='ok'){reconnect(current);return}sync();lastSend=0;void broadcast('request-state',{connectionId});}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state))reconnect(current)})}
- function update(dt,now){const player=window.noonsongPlayer;if(localAvatar&&player&&ownName!==player.displayName){if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}ownName=player.displayName;ownLabel=label(ownName.slice(0,24));scene.add(ownLabel)}if(supabase&&player&&(!identity||player.id!==identity.id))void connect(player);if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}const state=readState();if(ownLabel){ownLabel.scale.set(4.8,1.2,1);ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45}if(matdam&&!state.smoking){if(!endSent){endSent=true;void sendTargeted('matdam-end',matdam.partnerId)}endMatdamView();localAvatar.visible=true}if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();updateMatchTags();if(ready&&!document.hidden){const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);const moving=!lastPosition||Math.hypot(state.x-lastPosition.x,state.z-lastPosition.z)>.001||Math.abs(state.rotation-lastPosition.rotation)>.001;const interval=moving||state.walking||state.action!=='idle'||state.smoking||state.swimming?(1000/30):500;if(!sending&&(now-lastSend>=interval||action!==lastAction)){lastAction=action;lastPosition={x:state.x,z:state.z,rotation:state.rotation};void broadcast()}}for(const peer of peers.values()){if(!peer.state){peer.mesh.visible=false;continue}const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,swimming:false,held:0}:peer.state,m=peer.mesh,alpha=1-Math.exp(-dt*60);m.position.x+=(s.x-m.position.x)*alpha;m.position.z+=(s.z-m.position.z)*alpha;m.position.y=surfaceHeight(m.position.x,m.position.z,s.realm)+.07;m.rotation.y+=Math.atan2(Math.sin(s.rotation-m.rotation.y),Math.cos(s.rotation-m.rotation.y))*alpha;const held=s.held+(s.action==='inhale'?(now-peer.last)/1000:0);m.scale.setScalar(1+(s.action==='inhale'?Math.min(held/20,.22):s.action==='exhale'?.15:0));const swing=(s.walking||s.skyMotion?.walk===true)&&now-peer.last<2000?Math.sin(now/100)*.7:0;const parts=m.userData.parts;parts.arm0.rotation.x=parts.leg1.rotation.x=swing;parts.arm1.rotation.x=parts.leg0.rotation.x=-swing;peer.effects.update(s,now,(now-peer.last)/1000,dt);peer.applyPose()}}
- function updateBenchAvatars(){for(const peer of peers.values()){const seatY=peer.state?.seatedY;if(peer.state?.seatedBench&&Number.isFinite(seatY))applyBenchPose(peer.mesh,seatY)}}
+ function update(dt,now){
+  const player=window.noonsongPlayer;
+  if(localAvatar&&player&&ownName!==player.displayName){if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}ownName=player.displayName;ownLabel=label(ownName.slice(0,24));scene.add(ownLabel)}
+  if(supabase&&player&&(!identity||player.id!==identity.id))void connect(player);
+  if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}
+  const state=readState();
+  if(ownLabel){ownLabel.scale.set(4.8,1.2,1);ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45}
+  if(matdam&&!state.smoking){if(!endSent){endSent=true;void sendTargeted('matdam-end',matdam.partnerId)}endMatdamView();localAvatar.visible=true}
+  if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
+  updateMatchTags();
+  if(ready&&!document.hidden){
+   const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
+   const moving=!lastPosition||Math.hypot(state.x-lastPosition.x,state.z-lastPosition.z)>.001||Math.abs(state.rotation-lastPosition.rotation)>.001;
+   // 20 snapshots/sec remains smooth with interpolation, and avoids a crowded
+   // room generating 30 broadcasts per person every second.
+   const interval=moving||state.walking||state.action!=='idle'||state.smoking||state.swimming?(1000/20):500;
+   if(!sending&&(now-lastSend>=interval||action!==lastAction)){lastAction=action;lastPosition={x:state.x,z:state.z,rotation:state.rotation};void broadcast()}
+  }
+  frameNumber++;
+  for(const peer of peers.values()){
+   if(!peer.state){peer.mesh.visible=false;peer.effects.hide();continue}
+   const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,swimming:false,held:0}:peer.state,m=peer.mesh;
+   const matched=matdam?.partnerId===s.connectionId,dx=s.x-localAvatar.position.x,dz=s.z-localAvatar.position.z,distanceSq=dx*dx+dz*dz;
+   // Keep remote state, but do not draw avatars from another world or beyond
+   // the local visual neighbourhood. They restore immediately on approach.
+   if((s.realm!==state.realm&&!matched)||distanceSq>68*68&&!matched){m.visible=false;peer.effects.hide();continue}
+   m.visible=true;
+   const near=matched||distanceSq<27*27;
+   // Only distant-but-visible avatars skip fine facial/effect work. Their
+   // position still interpolates every frame, so walking remains fluid.
+   const detailFrame=near||((frameNumber+peer.detailTick++)%3===0);
+   const alpha=1-Math.exp(-dt*60);
+   m.position.x+=(s.x-m.position.x)*alpha;m.position.z+=(s.z-m.position.z)*alpha;m.position.y=surfaceHeight(m.position.x,m.position.z,s.realm)+.07;
+   m.rotation.y+=Math.atan2(Math.sin(s.rotation-m.rotation.y),Math.cos(s.rotation-m.rotation.y))*alpha;
+   if(!detailFrame)continue;
+   const held=s.held+(s.action==='inhale'?(now-peer.last)/1000:0);
+   m.scale.setScalar(1+(s.action==='inhale'?Math.min(held/20,.22):s.action==='exhale'?.15:0));
+   const swing=(s.walking||s.skyMotion?.walk===true)&&now-peer.last<2000?Math.sin(now/100)*.7:0,parts=m.userData.parts;
+   parts.arm0.rotation.x=parts.leg1.rotation.x=swing;parts.arm1.rotation.x=parts.leg0.rotation.x=-swing;
+   peer.effects.update(s,now,(now-peer.last)/1000,dt*(near?1:3));peer.applyPose();
+  }
+ }
+ function updateBenchAvatars(){for(const peer of peers.values()){const seatY=peer.state?.seatedY;if(peer.mesh.visible&&peer.state?.seatedBench&&Number.isFinite(seatY))applyBenchPose(peer.mesh,seatY)}}
  function occupiedSkyBeds(count=Infinity){const occupied=new Set();for(const peer of peers.values()){const state=peer.state;if(state?.realm==='sky'&&['sleep','transition'].includes(state.skyPose)&&Number.isInteger(state.skyBedIndex)&&state.skyBedIndex>=0&&state.skyBedIndex<count)occupied.add(state.skyBedIndex)}return occupied}
  function occupiedBenches(){const occupied=new Set();for(const peer of peers.values()){const id=peer.state?.seatedBench;if(typeof id==='string'&&id)occupied.add(id)}return occupied}
  function activeSwimmers(){const now=performance.now();return [...peers.values()].filter(peer=>peer.state?.swimming&&now-peer.last<5000).map(peer=>peer.state)}
