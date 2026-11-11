@@ -29,9 +29,9 @@ function strokes(parent,material,jamo,x,z,scale=1){
  const v=(dx,dz,l=.55)=>roundedStroke(parent,material,x+dx*scale,z+dz*scale,l*scale,Math.PI/2,.085*scale);
  const o=(dx,dz,r=.29)=>circle(parent,material,x+dx*scale,z+dz*scale,r*scale);
  switch(jamo){
-  case 'ㄱ':h(-.15,-.28,.57);v(-.43,0,.62);break;
+  case 'ㄱ':h(0,-.28,.68);v(.34,0,.62);break;
   case 'ㄴ':v(-.43,0,.62);h(-.15,.30,.57);break;
-  case 'ㄹ':h(0,-.31,.68);v(-.34,-.08,.45);h(0,.00,.68);v(.34,.18,.45);h(0,.31,.68);break;
+  case 'ㄹ':h(0,-.31,.68);v(.34,-.155,.31);h(0,0,.68);v(-.34,.155,.31);h(0,.31,.68);break;
   case 'ㅁ':h(0,-.31,.68);h(0,.31,.68);v(-.34,0,.62);v(.34,0,.62);break;
   case 'ㅂ':h(0,-.31,.68);h(0,.0,.68);h(0,.31,.68);v(-.34,0,.62);v(.34,0,.62);break;
   case 'ㅇ':o(0,0,.31);break;
@@ -157,7 +157,7 @@ export function addGroundWayfinding(scene){
  addSmokingIcon(scene,{x:-81,y:upperY+.025,z:-23.3,rotation:0,scale:1.25});
 
  // Board faces west, so turn the lettering across its front approach.
- addText(scene,{text:'방명록',x:-48.25,y:upperY,z:7,rotation:Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-ground-label'});
+ addText(scene,{text:'방명록',x:-48.25,y:upperY,z:7,rotation:-Math.PI/2,color:'#8065aa',scale:.82,name:'guestbook-ground-label'});
  // This sits immediately below the cloud portal, on the same upper terrace.
  // The portal is approached from the stair side (+Z), so keep the reading
  // direction facing that approach rather than reversing it across the floor.
