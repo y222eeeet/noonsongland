@@ -148,7 +148,7 @@ function surfaceHeight(x,z,realm){
 const p=createSongi();p.rotation.y=Math.PI;const startArea=new URLSearchParams(location.search).get('area');p.position.set(startArea==='guestbook'?-54:startArea==='myungshin'?-58:startArea==='jinri'?-51:0,0,startArea==='guestbook'?4:startArea==='myungshin'?4:startArea==='jinri'?-15:8);if(startArea==='guestbook')p.rotation.y=Math.PI/2;scene.add(p);const part=p.userData.parts;
 // A deliberately simple, world-aligned ground shadow. It stays still while
 // Song-i turns and avoids the costly per-frame shadow-map pass.
-const songiShadow=new T.Mesh(new T.CircleGeometry(1,32),new T.MeshBasicMaterial({color:'#463d5c',transparent:true,opacity:.18,depthWrite:false}));songiShadow.rotation.x=-Math.PI/2;songiShadow.scale.set(1.45,.76,1);songiShadow.renderOrder=1;scene.add(songiShadow);
+const songiShadow=new T.Mesh(new T.CircleGeometry(1,32),new T.MeshBasicMaterial({color:'#463d5c',transparent:true,opacity:.18,depthWrite:false}));songiShadow.rotation.x=-Math.PI/2;songiShadow.scale.set(.725,.38,1);songiShadow.renderOrder=1;scene.add(songiShadow);
 const swimButton=document.createElement('button'),swimExitButton=document.createElement('button');
 [swimButton,swimExitButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#6aaeb8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #28515c44";game.append(button)});
 swimButton.textContent='입수하기';swimExitButton.textContent='나오기';
@@ -279,7 +279,7 @@ let cameraSwipe=null;renderer.domElement.addEventListener('pointerdown',e=>{if(m
 const applyDayNight=createDayNight(scene,sun,M.window);
 // Campus-only updates are paused in the isolated sky realm. Its own sun,
 // stars and material changes continue through skyRealm.update().
-const updateWorldShadows=()=>{songiShadow.visible=!skyMode&&!swimming;if(songiShadow.visible)songiShadow.position.set(p.position.x,p.userData.groundY??p.position.y-.055,p.position.z)};
+const updateWorldShadows=()=>{songiShadow.visible=!skyMode&&!swimming;if(songiShadow.visible){songiShadow.position.set(p.position.x,p.userData.groundY??p.position.y-.055,p.position.z);songiShadow.rotation.set(-Math.PI/2,p.rotation.y,0)}};
 const updateDayNight=timestamp=>{if(!skyMode)applyDayNight(timestamp)};
 const layoutView=new URLSearchParams(location.search).get('view')==='layout';if(layoutView){game.style.width='100vw';game.style.height='100vh';game.style.borderRadius='0';scene.fog=null;camera.far=300;camera.updateProjectionMatrix();}
 let sittingBench=null,pendingBench=null,benchExit=null;
