@@ -59,11 +59,20 @@ function makeSyllable(char,material,scale=1){
  }
  if(!parts)return group;
  const [initial,vowel,final]=parts;
- // Initial and vowel occupy the upper half; a final consonant sits across the
- // lower half. This keeps the Hangul blocks legible from directly above.
- strokes(group,material,initial,-.36,final?-.23:0,final?.78:1);
- strokes(group,material,vowel,.38,final?-.23:0,final?.78:1);
- if(final)strokes(group,material,final,0,.46,.76);
+ // Korean vowels have two composition directions. Vertical vowels (ㅏ, ㅕ,
+ // ㅣ...) sit to the right of the initial consonant; horizontal vowels (ㅡ,
+ // ㅗ, ㅜ) sit below it. Treating both as side-by-side was why "클" could not
+ // read as a Hangul syllable from the stair approach.
+ const horizontalVowel=['ㅡ','ㅗ','ㅜ'].includes(vowel);
+ if(horizontalVowel){
+  strokes(group,material,initial,0,final?-.42:-.25,final?.65:.84);
+  strokes(group,material,vowel,0,final?.08:.38,final?.78:1);
+  if(final)strokes(group,material,final,0,.55,.70);
+ }else{
+  strokes(group,material,initial,-.36,final?-.23:0,final?.78:1);
+  strokes(group,material,vowel,.38,final?-.23:0,final?.78:1);
+  if(final)strokes(group,material,final,0,.46,.76);
+ }
  return group;
 }
 function makeText(text,color,scale=1){
