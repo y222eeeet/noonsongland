@@ -19,6 +19,7 @@ export function createSongi() {
     const g=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:5,steps:12,curveSegments:8});
     g.translate(0,0,-depth/2); return g;
   }
+  const faceSurface=(x,y)=>-.25+1.10*Math.sqrt(Math.max(0,1-(x/1.36)**2-((y-2.99)/1.22)**2))+.028;
   let shell,cranium,fg;
   if(sharedCoreGeometry){({shell,cranium,fg}=sharedCoreGeometry)}else{
   // Open notches retain a visible gap after beveling, rather than thin slits.
@@ -40,7 +41,6 @@ export function createSongi() {
   // the domed front/back volume rather than stretching every branch into a slab.
   shell=plate(outline,.58,.14);
   shell.translate(0,0,-.055);
-  parts.head=mesh(shell,lavender,[0,3.12,0]);
   cranium=new T.SphereGeometry(1,32,20);
   const cp=cranium.attributes.position;
   for(let i=0;i<cp.count;i++) {
@@ -52,7 +52,6 @@ export function createSongi() {
     cp.setXYZ(i,x*1.36,y*(front?1.22:1.10),z*(front?1.10:.76));
   }
   cranium.computeVertexNormals();
-  mesh(cranium,lavender,[0,2.99,-.25]);
   const faceShape=new T.Shape();
   faceShape.moveTo(0,.65);faceShape.bezierCurveTo(-.15,.60,-.16,.84,-.34,.74);
   faceShape.bezierCurveTo(-.68,.59,-.99,.24,-1,.03);
@@ -78,7 +77,6 @@ export function createSongi() {
   }
   fg=triangles;
   // White inset follows the restored lavender cranium, with only a thin skin offset.
-  const faceSurface=(x,y)=>-.25+1.10*Math.sqrt(Math.max(0,1-(x/1.36)**2-((y-2.99)/1.22)**2))+.028;
   const fp=fg.attributes.position;
   for(let i=0;i<fp.count;i++) {
     const z=fp.getZ(i), bulge=faceSurface(fp.getX(i),fp.getY(i)+2.99)-.46;
@@ -90,6 +88,11 @@ export function createSongi() {
   [shell,cranium,fg].forEach(geometry=>geometry.userData.sharedSongiGeometry=true);
   sharedCoreGeometry={shell,cranium,fg};
   }
+  // Geometry may be shared, but every Song-i owns its meshes and materials.
+  // These attachments must therefore happen for both the first and later
+  // instances, not just while the shared geometry is being built.
+  parts.head=mesh(shell,lavender,[0,3.12,0]);
+  mesh(cranium,lavender,[0,2.99,-.25]);
   const faceMaterial=cream.clone();
   parts.face=mesh(fg,faceMaterial,[0,2.99,.46]);
   for (let i=0;i<2;i++) {
