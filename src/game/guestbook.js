@@ -1,7 +1,7 @@
 import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
 import { daylightAt } from './day-night.js';
-export function createGuestbook(scene,camera,renderer,obstacles){
+export function createGuestbook(scene,camera,renderer,obstacles,canOpen=()=>true){
  const board=new T.Group();board.position.set(-46.9,10.78,7);scene.add(board);
  const boardMaterials=[];
  const add=(g,c,x,y,z)=>{const material=new T.MeshStandardMaterial({color:c,roughness:.85});boardMaterials.push({material,day:new T.Color(c)});const m=new T.Mesh(g,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;board.add(m);return m;};
@@ -56,7 +56,7 @@ export function createGuestbook(scene,camera,renderer,obstacles){
  form.onsubmit=async e=>{e.preventDefault();const submit=form.querySelector('[type=submit]');if(!form.elements.text.value.trim()&&!dirty){showToast('글이나 그림을 남겨주세요',true);return}if(!supabase){showToast('방명록 연결 설정을 찾지 못했어요.',true);return}submit.disabled=true;status.textContent='저장 중…';try{const fields=new FormData(form),{data:{user}}=await supabase.auth.getUser();if(!user)throw Error('입장 정보를 확인하지 못했어요. 다시 입장해주세요.');const {error}=await supabase.from('guestbook_entries').insert({user_id:user.id,display_name:(fields.get('name')||window.noonsongPlayer?.displayName||'익명 송이').trim().slice(0,24),message:fields.get('text').trim().slice(0,500),drawing:dirty?canvas.toDataURL('image/png'):null});if(error)throw Error('저장하지 못했어요.');form.reset();clear();await load();status.textContent='';showToast('작성완료')}catch(err){status.textContent='';showToast(err.message,true)}finally{submit.disabled=false}};
  const ray=new T.Raycaster(),mouse=new T.Vector2();let press=null;
  renderer.domElement.addEventListener('pointerdown',e=>press=[e.clientX,e.clientY]);
- renderer.domElement.addEventListener('pointerup',e=>{if(!press||Math.hypot(e.clientX-press[0],e.clientY-press[1])>8)return;const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(scene.children,true)[0];if(hit&&board.getObjectById(hit.object.id))open();});
+ renderer.domElement.addEventListener('pointerup',e=>{if(!canOpen()||!press||Math.hypot(e.clientX-press[0],e.clientY-press[1])>8)return;const r=renderer.domElement.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(scene.children,true)[0];if(hit&&board.getObjectById(hit.object.id))open();});
  // CanvasTexture papers are intentionally unlit, so tint them at night to keep the
  // notice board readable without looking like a glowing light source.
  const dayPaper=new T.Color('#ffffff'),nightPaper=new T.Color('#756d7c'),nightBoard=new T.Color('#68667a');
