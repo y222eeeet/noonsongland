@@ -159,6 +159,9 @@ export function createSongi() {
   const allFaceLayers=[parts.eye0,parts.eye1,...smallEyes,...closedEyes,...brows,parts.mouth,openMouth,mouthRim,exhaleMouth,exhaleLip];
   function setFaceState(name){
     const state=faceStates[name]||faceStates.normal;
+    // Visibility changes only when an expression actually changes. Rewriting
+    // every eye and mouth flag at 60fps per remote avatar has no visual gain.
+    if(root.userData.faceState===name)return;
     allFaceLayers.forEach(layer=>layer.visible=false);
     [...state.eyes,...state.mouth,...(state.brows||[])].forEach(layer=>layer.visible=true);
     root.userData.faceState=name;

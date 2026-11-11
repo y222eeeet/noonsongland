@@ -18,7 +18,7 @@ export function createRemoteActions(avatar, scene) {
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
  const shoulder=new T.Vector3(-.85,2.03,.8),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
  let handLift=0;
- function connectArm(segment,a,b){direction.subVectors(b,a);segment.position.copy(a).add(b).multiplyScalar(.5);segment.quaternion.setFromUnitVectors(up,direction.clone().normalize());segment.scale.y=Math.max(.05,direction.length()/1.3);}
+ function connectArm(segment,a,b){direction.subVectors(b,a);const length=direction.length();segment.position.copy(a).add(b).multiplyScalar(.5);if(length>.0001){direction.multiplyScalar(1/length);segment.quaternion.setFromUnitVectors(up,direction)}segment.scale.y=Math.max(.05,length/1.3);}
 
  const paper=new T.MeshStandardMaterial({color:'#f7eee2'});
  const ember=new T.MeshStandardMaterial({color:'#ff8d5c',emissive:'#ff4f37'});
