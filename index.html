@@ -23,6 +23,7 @@ import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
+import { addGroundWayfinding } from './src/models/ground-wayfinding.js';
 import { insidePond, onStoneBridge } from './src/game/pond-layout.js';
 import { orbitFrame, chooseOrbitAngle } from './src/game/swim-orbit.js';
 import { ROUTES, inRect } from './src/game/campus-routes-layout.js';
@@ -125,6 +126,7 @@ extendSmokingBoundary(scene,col,M);
 const worldFloor=unifyWorldFloors(scene,M);
 const campusPond=addCampusPond(scene,M);
 const guestbook=createGuestbook(scene,camera,renderer,col,()=>canEnterAction('guestbook'));
+addGroundWayfinding(scene);
 let swimming=false,swimPoint=null,swimDiveStarted=0,swimEnteredAt=0,swimOrientation=Math.PI/2,swimOrbitAngle=0,swimDirection=1;
 function surfaceHeight(x,z,realm){
  if(realm==='sky'||(realm===undefined&&skyMode))return skyRealm.surfaceHeightAt(x,z);
