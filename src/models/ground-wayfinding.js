@@ -39,7 +39,9 @@ function strokes(parent,material,jamo,x,z,scale=1){
   case 'ㅊ':h(0,-.30,.68);h(0,.02,.68);v(0,.18,.34);h(0,-.55,.33);break;
   // Give ㅋ a full-height spine and two long arms. At a low camera angle the
   // shorter former strokes read like broken dots rather than the consonant.
-  case 'ㅋ':v(-.34,0,.70);h(0,-.27,.68);h(0,.27,.68);break;
+  // Match the floor-reading direction: the upright sits at the right end of
+  // the two bars, as in the "클" construction used for the portal marker.
+  case 'ㅋ':v(.34,0,.70);h(0,-.27,.68);h(0,.27,.68);break;
   case 'ㅎ':o(0,-.10,.23);h(0,-.43,.64);h(0,.32,.64);break;
   case 'ㅏ':v(-.08,0,.72);h(.16,-.12,.38);break;
   case 'ㅣ':v(0,0,.72);break;
