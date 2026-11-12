@@ -104,10 +104,17 @@ export function addNorthSmokingArea(scene,obstacles,M){
   make(new T.BoxGeometry(32,.1,8),M.path,-81,y-.05,-28);
   make(new T.BoxGeometry(32,.1,4),M.path,-81,y-.05,-22);
   // Four benches run along the far edge, leaving a clear route through the area.
-  for(const x of [-93,-85,-77,-69]){
-    make(new T.BoxGeometry(3,.18,.7),M.cream,x,y+.7,-30);
-    make(new T.BoxGeometry(3,.7,.14),M.lav,x,y+1,-30.35);
-    for(const dx of [-1,1])make(new T.BoxGeometry(.16,.65,.45),M.dark,x+dx,y+.33,-30);
+  for(const [index,x] of [-93,-85,-77,-69].entries()){
+    // These benches use the same seat descriptor as every other sit-able
+    // bench, so selection, one-person occupancy and seated smoking all share
+    // the existing rules instead of a special smoking-area interaction.
+    const seat={id:`north-smoking-bench-${index}`,x,z:-30,y:y+.76,rotation:0};
+    const pieces=[
+      make(new T.BoxGeometry(3,.18,.7),M.cream,x,y+.7,-30),
+      make(new T.BoxGeometry(3,.7,.14),M.lav,x,y+1,-30.35),
+      ...[-1,1].map(dx=>make(new T.BoxGeometry(.16,.65,.45),M.dark,x+dx,y+.33,-30))
+    ];
+    pieces.forEach(piece=>piece.userData.benchSeat=seat);
     obstacles.push({x,z:-30,w:1.65,h:.6});
   }
   for(const x of [-94,-67]){
