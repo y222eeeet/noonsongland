@@ -46,3 +46,51 @@ export function createSled() {
  box(1.86,.55,.15,wood,0,.76,-1.03);
  return sled;
 }
+
+export function createSledMedal() {
+ const medal = new T.Group();
+ medal.position.set(0,1.58,.77);
+ const gold = new T.MeshStandardMaterial({color:'#ffc83e',roughness:.55,metalness:.12});
+ const rimGold = new T.MeshStandardMaterial({color:'#d99521',roughness:.56});
+ const cream = new T.MeshStandardMaterial({color:'#fff9e8',roughness:.68});
+ function add(geometry,material,x,y,z) {
+  const mesh = new T.Mesh(geometry,material);
+  mesh.position.set(x,y,z);
+  medal.add(mesh);
+  return mesh;
+ }
+ const stripes = ['#69b9ef','#fff8ee','#e85a59'].map(color=>new T.MeshStandardMaterial({color,roughness:.8}));
+ for (const side of [-1,1]) {
+  const ribbon = new T.Group();
+  ribbon.position.set(side*.135,.41,-.043);
+  ribbon.rotation.z = -side*.49;
+  for (const [i,material] of stripes.entries()) {
+   const stripe = new T.Mesh(new T.BoxGeometry(.05,.47,.025),material);
+   stripe.position.x = -side*(i-1)*.05;
+   ribbon.add(stripe);
+  }
+  medal.add(ribbon);
+ }
+ add(new RoundedBoxGeometry(.22,.11,.075,2,.025),gold,0,.23,0);
+ add(new T.CylinderGeometry(.235,.235,.07,40),gold,0,0,0).rotation.x=Math.PI/2;
+ add(new T.TorusGeometry(.191,.014,8,40),rimGold,0,0,.036);
+ const one=new T.Shape();
+ one.moveTo(-.065,.07);one.lineTo(-.012,.108);one.lineTo(.028,.108);
+ one.lineTo(.028,-.074);one.lineTo(.072,-.074);one.lineTo(.072,-.105);
+ one.lineTo(-.066,-.105);one.lineTo(-.066,-.074);one.lineTo(-.012,-.074);
+ one.lineTo(-.012,.063);one.lineTo(-.049,.041);one.closePath();
+ add(new T.ExtrudeGeometry(one,{depth:.007,bevelEnabled:false}),cream,0,0,.039);
+ return medal;
+}
+
+const clapDirection = new T.Vector3();
+const armRest = [-1,1].map(side=>new T.Vector3(side*.17,-.27,0).normalize());
+export function clapSledRider(parts,elapsed) {
+ const reach = (1-Math.cos(elapsed*Math.PI*5))*.5;
+ for (const [i,arm] of [parts.arm0,parts.arm1].entries()) {
+  const side = i===0?-1:1;
+  clapDirection.set(side*T.MathUtils.lerp(.50,.025,reach),1.72,.56+.06*reach)
+   .sub(arm.position).normalize();
+  arm.quaternion.setFromUnitVectors(armRest[i],clapDirection);
+ }
+}

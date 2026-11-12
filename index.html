@@ -24,7 +24,7 @@ import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
 import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
-import { createSled, placeSled, SLED_RIDER_OFFSET } from './src/models/sled.js';
+import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider } from './src/models/sled.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
@@ -185,8 +185,7 @@ function positionSledRider(x,z,yaw){
  p.rotation.set(0,yaw,0);
  p.userData.groundY=sled.position.y;
 }
-const medal=new T.Group(),medalRibbon=new T.MeshStandardMaterial({color:'#8f7ac2',roughness:.7}),medalGold=new T.MeshStandardMaterial({color:'#f4cd58',roughness:.42,metalness:.18});
-const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRight=ribbonLeft.clone(),medalDisk=new T.Mesh(new T.CylinderGeometry(.22,.22,.07,20),medalGold);ribbonLeft.position.set(-.11,2.40,.75);ribbonLeft.rotation.z=.28;ribbonRight.position.set(.11,2.40,.75);ribbonRight.rotation.z=-.28;medalDisk.position.set(0,2.12,.80);medalDisk.rotation.x=Math.PI/2;medal.add(ribbonLeft,ribbonRight,medalDisk);medal.visible=false;p.add(medal);
+const medal=createSledMedal();medal.visible=false;p.add(medal);
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
 function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
 function setSledLyric(index){if(index===sledLyricIndex)return;sledLyricIndex=index;sighStatus.classList.add('sled-lyric');sighStatus.innerHTML=`♪ <strong><em>${sledLyrics[index]}</em></strong> ♪`}
@@ -209,11 +208,11 @@ function updateSled(now,dt){
   if(x>=sledCourse.finish.x)finishSledRide(now);
   return;
  }
- if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
+ if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;part.arm0.rotation.set(0,0,0);part.arm1.rotation.set(0,0,0);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
 function applySledPose(now){
  if(sledState==='riding'){p.rotation.setFromQuaternion(sled.quaternion,'YXZ');part.leg0.rotation.x=part.leg1.rotation.x=-1.72;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
- if(sledState==='finish'){const wave=Math.sin(now*.012)*.62;part.arm0.rotation.z=.7+wave;part.arm1.rotation.z=-.7-wave;part.arm0.rotation.x=-.38;part.arm1.rotation.x=-.38;medal.rotation.y=Math.sin(now*.004)*.08}
+ if(sledState==='finish')clapSledRider(part,(now-sledFinishStarted)/1000);
 }
 sledButton.addEventListener('click',startSledRide);
 renderer.domElement.addEventListener('pointerdown',event=>{sledPress=[event.clientX,event.clientY]});
