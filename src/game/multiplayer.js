@@ -48,7 +48,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function remove(id){const peer=peers.get(id);if(!peer)return;peer.effects.dispose();scene.remove(peer.mesh);const geometries=new Set(),materials=new Set();peer.mesh.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>materials.add(m))});geometries.forEach(g=>{if(!g.userData.sharedSongiGeometry)g.dispose()});materials.forEach(m=>{m.map?.dispose();m.dispose()});peers.delete(id);if(selectedPeerId===id){selectedPeerId='';requestButton.hidden=true}if(matdam?.partnerId===id)endMatdamView()}
  function createPeer(id){
   if(peers.has(id)||peers.size>=100)return peers.get(id);
-  const mesh=createSongi();mesh.userData.cameraPassThrough=true;mesh.visible=false;
+  const mesh=createSongi();mesh.visible=false;
   // Only the local Song-i needs a dynamic shadow. Remote shadows multiply the
   // directional-light pass for every connected player without helping gameplay.
   mesh.traverse(part=>{if(part.isMesh){part.castShadow=false;part.receiveShadow=false}});
