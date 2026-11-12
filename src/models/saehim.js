@@ -14,8 +14,9 @@ export function addSaehimAndRoutes(scene,obstacles,M){
   old.removeFromParent();old.geometry.dispose();
  }
  function upperPatch(r){mesh(new T.BoxGeometry(r.x1-r.x0,.10,r.z1-r.z0),M.path,(r.x0+r.x1)/2,ROUTES.upper-.05,(r.z0+r.z1)/2)}
- upperPatch(ROUTES.smokingWalk);upperPatch(ROUTES.southCourt);
- mesh(new T.BoxGeometry(30,10.74,29),M.cream,-62,5.23,31.5);
+ upperPatch(ROUTES.smokingWalk);upperPatch(ROUTES.southCourt);upperPatch(ROUTES.southCourtExtension);
+ const court=ROUTES.southCourt;
+ mesh(new T.BoxGeometry(30,10.74,court.z1-court.z0),M.cream,-62,5.23,(court.z0+court.z1)/2);
  const hall=new T.Group();hall.name='saehim-hall';hall.position.set(-73,ROUTES.upper,33);group.add(hall);
  const glass=new T.MeshStandardMaterial({color:'#8ebbc9',roughness:.5,metalness:.05});glass.userData.campusWindow=true;
  mesh(new T.BoxGeometry(6.8,10.8,25),M.cream,0,5.4,0,hall);
@@ -35,10 +36,17 @@ export function addSaehimAndRoutes(scene,obstacles,M){
  // Solid treads share the exact heights used by traversal.
  const s=ROUTES.stairs,depth=(s.z1-s.z0)/s.steps;
  for(let i=0;i<s.steps;i++){const h=ROUTES.lower+(ROUTES.upper-ROUTES.lower)*(1-i/s.steps);mesh(new T.BoxGeometry(s.x1-s.x0,h-ROUTES.lower,depth),i%2?M.cream:M.path,(s.x0+s.x1)/2,(h+ROUTES.lower)/2,s.z0+(i+.5)*depth)}
- // Restore the original campus-colored hill. The sled route rules remain
- // available, but the terrain itself is no longer rendered as a snowfield.
- const r=ROUTES.ramp,vertices=[r.x0,ROUTES.upper,r.z0,r.x0,ROUTES.upper,r.z1,r.x1,ROUTES.lower,r.z1,r.x1,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z1];
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));g.setIndex([0,1,2,0,2,3,0,4,5,0,5,1,0,3,4,1,5,2]);g.computeVertexNormals();mesh(g,M.path,0,0,0);
+ function slope(r,material){
+  const vertices=[r.x0,ROUTES.upper,r.z0,r.x0,ROUTES.upper,r.z1,r.x1,ROUTES.lower,r.z1,r.x1,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z1];
+  const geometry=new T.BufferGeometry();
+  geometry.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+  geometry.setIndex([0,1,2,0,2,3,0,4,5,0,5,1,0,3,4,1,5,2]);
+  geometry.computeVertexNormals();
+  mesh(geometry,material,0,0,0);
+ }
+ const snow=new T.MeshStandardMaterial({color:'#fffafa',roughness:.92});
+ slope(ROUTES.sledHill,snow);
+ slope(ROUTES.ramp,M.path);
  const w=ROUTES.groundWalk;mesh(new T.BoxGeometry(w.x1-w.x0,.10,w.z1-w.z0),M.path,(w.x0+w.x1)/2,0,(w.z0+w.z1)/2);
- return {minX:-101,maxX:47,minZ:-70,maxZ:50};
+ return {minX:-101,maxX:47,minZ:-70,maxZ:ROUTES.ramp.z1+2};
 }
