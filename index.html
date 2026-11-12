@@ -206,7 +206,22 @@ breathMaterial.depthTest=true;
 function updateSighBreath(now){if(!sighBreath.visible)return;const age=Math.max(0,(now-breathStarted)/1000);if(age>5){sighBreath.visible=false;return}sighBreath.position.copy(breathOrigin).addScaledVector(breathForward,age*.18);sighBreath.position.y+=age*1.7;sighBreath.position.x+=Math.sin(age*4)*.06;sighBreath.scale.setScalar((sighBreath.userData.exhale?.scale||1)*(1+age*.42));sighBreath.rotation.y=age*.24;breathMaterial.opacity=(sighBreath.userData.exhale?.opacity||.58)*(1-age/5)}
 function updateSighScale(now){if(!inhaling&&exhaleUntil>now)p.scale.setScalar(1+sighReleasePuff*Math.max(0,(exhaleUntil-now)/700))}
 const smokeProp=new T.Group(),smokeCloud=new T.Group(),smokeMat=new T.MeshStandardMaterial({color:'#ece7f5',transparent:true,opacity:.48,roughness:.5,depthWrite:false}),smokeOrigin=new T.Vector3(),smokeForward=new T.Vector3(),smokeRight=new T.Vector3(),smokeLook=new T.Vector3();let smokePhase='idle',smokeStarted=0,smokePuffStarted=-1,smokeBurn=1,smokeLast=0;const paper=new T.MeshStandardMaterial({color:'#f7eee2',roughness:.9}),ember=new T.MeshStandardMaterial({color:'#ff8d5c',emissive:'#ff4f37',emissiveIntensity:.7,roughness:.55});const filterMat=new T.MeshStandardMaterial({color:'#d7b18a',roughness:1});
-const chugProp=new T.Group(),chugForward=new T.Vector3(),chugRight=new T.Vector3(),chugLook=new T.Vector3(),chugBottleMat=new T.MeshStandardMaterial({color:'#4d9869',roughness:.42,transparent:true,opacity:.9});const chugBottleProfile=[new T.Vector2(.17,0),new T.Vector2(.22,.055),new T.Vector2(.22,.57),new T.Vector2(.195,.67),new T.Vector2(.128,.79),new T.Vector2(.103,1.11),new T.Vector2(.108,1.25)],chugBottle=new T.Mesh(new T.LatheGeometry(chugBottleProfile,24),chugBottleMat),chugCap=new T.Mesh(new T.CylinderGeometry(.115,.115,.14,14),new T.MeshStandardMaterial({color:'#e5dfc9',roughness:.8}));const chamisulTexture=new T.TextureLoader().load(chamisulLabelUrl);chamisulTexture.colorSpace=T.SRGBColorSpace;const chugLabel=new T.Mesh(new T.CylinderGeometry(.226,.226,.60,24,1,true,Math.PI/2,Math.PI),new T.MeshStandardMaterial({map:chamisulTexture,roughness:.68,side:T.FrontSide}));chugBottle.position.y=.54;chugLabel.position.y=.88;chugCap.position.y=1.86;chugProp.add(chugBottle,chugLabel,chugCap);chugProp.visible=false;scene.add(chugProp);
+const chugProp=new T.Group(),chugForward=new T.Vector3(),chugRight=new T.Vector3(),chugLook=new T.Vector3(),chugBottleMat=new T.MeshStandardMaterial({color:'#4d9869',roughness:.42,transparent:true,opacity:.9});const chugBottleProfile=[
+ [.17,0],[.22,.055],[.22,.57],[.195,.67],[.128,.79],
+ [.103,1.11],[.103,1.20],[.118,1.21],[.119,1.25],
+ [.112,1.27],[.085,1.27],[.077,1.25],[.077,1.12],[.102,.91],[.17,.67],[.198,.55],[.19,.08],[0,.08]
+].map(([radius,height])=>new T.Vector2(radius,height));
+const chugBottle=new T.Mesh(new T.LatheGeometry(chugBottleProfile,24),chugBottleMat);
+// The cap has its own hollow skirt, with clearance around the glass lip.
+const chugCapProfile=[
+ [.137,-.16],[.14,-.15],[.14,-.02],[.125,0],[0,0],
+ [0,-.034],[.123,-.034],[.123,-.16],[.137,-.16]
+].map(([radius,height])=>new T.Vector2(radius,height));
+const chugCap=new T.Mesh(
+ new T.LatheGeometry(chugCapProfile,24),
+ new T.MeshStandardMaterial({color:'#e5dfc9',roughness:.8})
+);
+const chamisulTexture=new T.TextureLoader().load(chamisulLabelUrl);chamisulTexture.colorSpace=T.SRGBColorSpace;const chugLabel=new T.Mesh(new T.CylinderGeometry(.226,.226,.60,24,1,true,Math.PI/2,Math.PI),new T.MeshStandardMaterial({map:chamisulTexture,roughness:.68,side:T.FrontSide}));chugBottle.position.y=.54;chugLabel.position.y=.88;chugCap.position.y=1.86;chugProp.add(chugBottle,chugLabel,chugCap);chugProp.visible=false;scene.add(chugProp);
 const handMat=new T.MeshStandardMaterial({color:'#fff8ef',roughness:.9});
 const hand=new T.Mesh(new T.CapsuleGeometry(.17,2.40,5,12),handMat);hand.position.set(.04,-1.20,0);hand.rotation.z=-.12;
 const thumb=new T.Mesh(new T.SphereGeometry(.105,10,8),handMat);thumb.position.set(.14,-.04,.10);
