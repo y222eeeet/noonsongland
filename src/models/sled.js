@@ -83,14 +83,29 @@ export function createSledMedal() {
  return medal;
 }
 
-const clapDirection = new T.Vector3();
-const armRest = [-1,1].map(side=>new T.Vector3(side*.17,-.27,0).normalize());
+const clapTarget = new T.Vector3();
+const clapAxis = new T.Vector3(0,1,0);
 export function clapSledRider(parts,elapsed) {
  const reach = (1-Math.cos(elapsed*Math.PI*5))*.5;
  for (const [i,arm] of [parts.arm0,parts.arm1].entries()) {
   const side = i===0?-1:1;
-  clapDirection.set(side*T.MathUtils.lerp(.50,.025,reach),1.72,.56+.06*reach)
-   .sub(arm.position).normalize();
-  arm.quaternion.setFromUnitVectors(armRest[i],clapDirection);
+  const hand = arm.children[0];
+  arm.rotation.set(0,0,0);
+  // The rounded tips stay on the same line in front of the chest.
+  clapTarget.set(side*T.MathUtils.lerp(.57,.16,reach),1.72,.76).sub(arm.position);
+  const length = clapTarget.length();
+  hand.position.copy(clapTarget).multiplyScalar(.5);
+  hand.quaternion.setFromUnitVectors(clapAxis,clapTarget.normalize());
+  hand.scale.y=(length+.22)/.68;
+ }
+}
+
+export function resetSledClap(parts) {
+ for (const [i,arm] of [parts.arm0,parts.arm1].entries()) {
+  const side = i===0?-1:1;
+  const hand = arm.children[0];
+  hand.position.set(side*.17,-.27,0);
+  hand.rotation.set(0,0,side*.55);
+  hand.scale.y=1;
  }
 }

@@ -25,7 +25,7 @@ import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
 import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
-import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider } from './src/models/sled.js';
+import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider, resetSledClap } from './src/models/sled.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
@@ -232,7 +232,7 @@ function updateSled(now,dt){
    if(spot){placeSledFinisher(spot);snapCamera=true;multiplayer.flush()}
   }
  }
- if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;part.arm0.rotation.set(0,0,0);part.arm1.rotation.set(0,0,0);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
+ if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;resetSledClap(part);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
 function applySledPose(now){
  if(sledState==='riding'){p.rotation.setFromQuaternion(sled.quaternion,'YXZ');part.leg0.rotation.x=part.leg1.rotation.x=-1.72;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
