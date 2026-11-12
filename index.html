@@ -231,7 +231,21 @@ const portalButton=document.createElement('button'),skyReturnButton=document.cre
 [portalButton,skyReturnButton,skySleepButton,skyRollButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:8;padding:10px 14px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 13px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 7px 18px #392e4444";game.append(button)});
 portalButton.textContent='하늘나라 가기';portalButton.style.cssText+=';left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%)';skyReturnButton.textContent='캠퍼스로 돌아가기';skyReturnButton.style.cssText+=';top:max(18px,env(safe-area-inset-top));left:14px';skySleepButton.textContent='구름침대에서 자기';skySleepButton.style.cssText+=';right:14px;top:max(64px,calc(env(safe-area-inset-top) + 46px))';skyRollButton.textContent='뒹굴뒹굴';skyRollButton.style.cssText+=';right:14px;top:max(110px,calc(env(safe-area-inset-top) + 92px))';
 let skyMode=false,skyPose='idle';const portalRay=new T.Raycaster(),portalPointer=new T.Vector2();
-function setSkyUi(active){skyReturnButton.hidden=skySleepButton.hidden=skyRollButton.hidden=!active;faceButton.hidden=sighButton.hidden=smokeButton.hidden=fastButton.hidden=active;portalButton.hidden=true}
+function syncSkyModeControls(){
+ const resting=skyMode&&skyPose!=='idle';
+ // Sky actions are layered over the shared mode policy.  This keeps every
+ // campus action (including newly added ones such as bottle chugging) out of
+ // both the free-roam and resting sky states.
+ applyModeControls(resting?'sky-rest':'sky');
+ inhaleButton.hidden=true;smokeInhaleButton.hidden=true;chugInhaleButton.hidden=true;
+ skyReturnButton.hidden=!skyMode;skyReturnButton.textContent=resting?'일어나기':'캠퍼스로 돌아가기';skyReturnButton.disabled=bedMotion?.active||false;
+ skySleepButton.hidden=!skyMode||resting;skyRollButton.hidden=!skyMode||resting;
+}
+function setSkyUi(active){
+ portalButton.hidden=true;
+ if(!active){skyReturnButton.hidden=skySleepButton.hidden=skyRollButton.hidden=true;applyModeControls('idle');return}
+ syncSkyModeControls();
+}
 function setSkyRenderMode(active){renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,active?1.2:1.5));syncViewport()}
 function enterSkyRealm(){if(!canEnterAction('sky'))return;clearEntryActions();skyMode=true;skyPose='idle';setSkyRenderMode(true);skyRealm.enter();p.position.set(0,skyRealm.floorY,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=skyRealm.floorY;setSkyUi(true);snapCamera=true}
 function leaveSkyRealm(){skyMode=false;skyPose='idle';setSkyRenderMode(false);skyRealm.leave();p.position.set(0,surfaceHeight(0,8)+.07,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSkyUi(false);snapCamera=true}
@@ -243,7 +257,7 @@ const bedMotion=createBedMotion(p,skyRealm.floorY,pose=>{skyPose=pose;if(pose===
 const skyToast=document.createElement('div');skyToast.hidden=true;skyToast.style.cssText="position:absolute;z-index:14;left:50%;bottom:max(92px,calc(env(safe-area-inset-bottom) + 68px));transform:translateX(-50%);padding:11px 15px;border-radius:999px;background:#55515bcc;color:#fff;font:700 13px ui-rounded,'Apple SD Gothic Neo',sans-serif;white-space:nowrap;pointer-events:none";game.append(skyToast);
 function showSkyToast(message){skyToast.textContent=message;skyToast.hidden=false;clearTimeout(skyToastTimer);skyToastTimer=setTimeout(()=>skyToast.hidden=true,2600)}
 function chooseCloudBed(event){if(!skyMode||skyPose!=='idle')return;event.stopImmediatePropagation();const order=skyRealm.bedOrder,occupied=multiplayer.occupiedSkyBeds(skyRealm.beds.length),index=order.find(candidate=>!occupied.has(candidate));if(index===undefined){showSkyToast('현재 모든 침대가 이용중이에요');return}const bed=skyRealm.beds[index];skyPose='transition';skyBedIndex=index;p.userData.skyBedIndex=index;bedMotion.enter(bed,performance.now());updateSkyPoseUi();multiplayer.flush();}
-function updateSkyPoseUi(){const resting=skyMode&&skyPose!=='idle';skyReturnButton.hidden=!skyMode;skyReturnButton.textContent=resting?'일어나기':'캠퍼스로 돌아가기';skyReturnButton.disabled=bedMotion.active;skySleepButton.hidden=!skyMode||resting;skyRollButton.hidden=!skyMode||resting;joy.hidden=resting;}
+function updateSkyPoseUi(){if(!skyMode)return;syncSkyModeControls();}
 skySleepButton.addEventListener('click',chooseCloudBed,true);skyRollButton.addEventListener('click',()=>{if(!skyMode||skyPose!=='idle')return;skyBedIndex=-1;p.userData.skyPose='roll';p.userData.skyBedIndex=-1;p.userData.skyRollStartedAt=Date.now()},true);
 skySleepButton.addEventListener('click',updateSkyPoseUi);skyRollButton.addEventListener('click',updateSkyPoseUi);skyRollButton.addEventListener('click',()=>multiplayer.flush());
 skyReturnButton.addEventListener('click',event=>{if(!skyMode||skyPose==='idle')return;event.stopImmediatePropagation();if(bedMotion.active)return;if(skyPose==='sleep'){skyPose='transition';bedMotion.leave(skyRealm.beds[skyBedIndex],performance.now());updateSkyPoseUi();multiplayer.flush();return}skyPose='idle';skyBedIndex=-1;p.userData.skyPose='idle';p.userData.skyBedIndex=-1;p.rotation.set(0,Math.PI,0);p.position.y=skyRealm.floorY;updateSkyPoseUi();snapCamera=true;multiplayer.flush();},true);
