@@ -10,11 +10,12 @@ export const LAMP_SPOTS=[
 ].map(([x,z,y])=>{const [wx,wz]=map(x,z);return [wx,y,wz]});
 export const BENCH_SPOTS=[[615,434],[750,434],[824,434]].map(p=>map(...p));
 
-// Three trees on each bank of the long river stretch west of the bridge.
+// Four trees per bank, clear of the stone edges and the bridge approach.
 const RIVERSIDE_CONIFERS=[
- [-15,10.4,.92],[-26,11.25,1.06],[-37,11.5,.96],
- [-15,28.65,1.04],[-26,28.4,.94],[-37,29.0,1.1]
+ [-14,9.5],[-23.5,10.3],[-33,10.5],[-42.5,10.7],
+ [-14,29.5],[-23.5,29.2],[-33,29.6],[-42.5,30.1]
 ];
+const CONIFER_SCALE=1.792; // 4.07 units before scaling, about 1.5 times Songi's height.
 
 export function addCampusFurniture(scene,obstacles,M){
  const root=new T.Group();root.name='marked-campus-furniture';scene.add(root);
@@ -34,16 +35,16 @@ export function addCampusFurniture(scene,obstacles,M){
   {y:2.54,geometry:new T.ConeGeometry(1.02,1.75,9),color:'#689777'},
   {y:3.27,geometry:new T.ConeGeometry(.76,1.60,9),color:'#7daa85'}
  ].map(tier=>({...tier,material:new T.MeshStandardMaterial({color:tier.color,roughness:.94})}));
- RIVERSIDE_CONIFERS.forEach(([x,z,scale],index)=>{
+ RIVERSIDE_CONIFERS.forEach(([x,z],index)=>{
   const tree=new T.Group();
   tree.name='riverside-conifer';
   tree.position.set(x,0,z);
   tree.rotation.y=index*.39;
-  tree.scale.setScalar(scale);
+  tree.scale.setScalar(CONIFER_SCALE);
   root.add(tree);
   mesh(tree,pineTrunk,trunk,0,.675,0);
   for(const tier of pineTiers)mesh(tree,tier.geometry,tier.material,0,tier.y,0);
-  obstacles.push({x,z,r:.23*scale});
+  obstacles.push({x,z,r:.23*CONIFER_SCALE});
  });
  BENCH_SPOTS.forEach(([x,z],index)=>{
   const bench=new T.Group();bench.name='lower-road-bench';bench.position.set(x,.05,z+.25);root.add(bench);
