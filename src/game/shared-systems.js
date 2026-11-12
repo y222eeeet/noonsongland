@@ -33,16 +33,16 @@ export function canEnterActivity(mode,action){return MODE_RULES[mode]?.entryActi
 
 // Shared controls are described once per mode. Feature code must apply this
 // policy after a transition instead of toggling each button independently.
-const commonControls=Object.freeze({face:false,sigh:false,fast:false,smoke:false,joystick:false,stand:false,smokeExitSlot:null,standExitSlot:null});
+const commonControls=Object.freeze({face:false,sigh:false,fast:false,smoke:false,chug:false,joystick:false,stand:false,sighExitSlot:null,smokeExitSlot:null,chugExitSlot:null,standExitSlot:null});
 const controls=overrides=>Object.freeze({...commonControls,...overrides});
 export const MODE_UI_RULES=Object.freeze({
- [PLAYER_MODE.IDLE]:controls({face:true,sigh:true,fast:true,smoke:true,joystick:true}),
+ [PLAYER_MODE.IDLE]:controls({face:true,sigh:true,fast:true,smoke:true,chug:true,joystick:true}),
  [PLAYER_MODE.SEATED]:controls({smoke:true,stand:true,standExitSlot:0}),
  [PLAYER_MODE.SMOKE]:controls({smoke:true,smokeExitSlot:0}),
  [PLAYER_MODE.SEATED_SMOKE]:controls({smoke:true,stand:true,smokeExitSlot:1,standExitSlot:0}),
- [PLAYER_MODE.GUESTBOOK]:commonControls,[PLAYER_MODE.SIGH]:commonControls,[PLAYER_MODE.SWIM]:commonControls,
+ [PLAYER_MODE.GUESTBOOK]:commonControls,[PLAYER_MODE.SIGH]:controls({sigh:true,sighExitSlot:0}),[PLAYER_MODE.SWIM]:commonControls,
  [PLAYER_MODE.SKY]:commonControls,[PLAYER_MODE.SKY_REST]:commonControls,
- [PLAYER_MODE.SLED]:commonControls,[PLAYER_MODE.DRINK]:commonControls,[PLAYER_MODE.POCHA]:commonControls,
+ [PLAYER_MODE.SLED]:commonControls,[PLAYER_MODE.DRINK]:controls({chug:true,chugExitSlot:0}),[PLAYER_MODE.POCHA]:commonControls,
  [PLAYER_MODE.CLASSROOM]:controls({joystick:true}),[PLAYER_MODE.CLASSROOM_BREAK]:commonControls
 });
 export function getModeUiRule(mode){return MODE_UI_RULES[mode]||commonControls}
