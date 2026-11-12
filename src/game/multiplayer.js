@@ -116,7 +116,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
   updateMatchTags();
   if(ready&&!document.hidden){
-   const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
+   const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.drinking,state.drinkPhase,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
    const moving=!lastPosition||Math.hypot(state.x-lastPosition.x,state.z-lastPosition.z)>.001||Math.abs(state.rotation-lastPosition.rotation)>.001;
    // Keep the original 30Hz movement stream: this is the quality floor for
    // nearby Song-i movement and interaction animation.
@@ -126,7 +126,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   const alpha=1-Math.exp(-dt*60);
   for(const peer of peers.values()){
    if(!peer.state){peer.mesh.visible=false;peer.effects.hide();continue}
-   const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,swimming:false,held:0}:peer.state,m=peer.mesh;
+   const s=now-peer.last>2000?{...peer.state,walking:false,action:'idle',smoking:false,drinking:false,swimming:false,held:0}:peer.state,m=peer.mesh;
    const matched=matdam?.partnerId===s.connectionId,dx=s.x-localAvatar.position.x,dz=s.z-localAvatar.position.z,distanceSq=dx*dx+dz*dz;
    // Keep remote state, but do not draw avatars from another world or beyond
    // the local visual neighbourhood. They restore immediately on approach.

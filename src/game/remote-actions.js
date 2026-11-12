@@ -18,6 +18,22 @@ export function createRemoteActions(avatar, scene) {
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
  const shoulder=new T.Vector3(-.85,2.03,.8),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
  let handLift=0;
+ let bottle=null,bottleCap=null;
+ function addBottle(){
+  bottle=new T.Group();
+  const profile=[
+   [.11,-.25],[.145,-.21],[.145,.18],[.13,.25],[.082,.34],
+   [.067,.58],[.078,.60],[.078,.63],[.051,.63],[.051,.53]
+  ].map(([radius,height])=>new T.Vector2(radius,height));
+  const glass=new T.Mesh(new T.LatheGeometry(profile,16),new T.MeshStandardMaterial({color:'#4d9869',roughness:.42}));
+  const label=new T.Mesh(new T.CylinderGeometry(.147,.147,.29,16,1,true),new T.MeshStandardMaterial({color:'#efe6c8',roughness:.75}));
+  label.position.y=-.045;
+  bottleCap=new T.Mesh(new T.CylinderGeometry(.09,.09,.085,16),new T.MeshStandardMaterial({color:'#e5dfc9',roughness:.8}));
+  bottleCap.position.y=.624;
+  bottle.add(glass,label,bottleCap);
+  grip.add(bottle);
+ }
+
  function connectArm(segment,a,b){direction.subVectors(b,a);const length=direction.length();segment.position.copy(a).add(b).multiplyScalar(.5);if(length>.0001){direction.multiplyScalar(1/length);segment.quaternion.setFromUnitVectors(up,direction)}segment.scale.y=Math.max(.05,length/1.3);}
 
  const paper=new T.MeshStandardMaterial({color:'#f7eee2'});
@@ -39,27 +55,46 @@ export function createRemoteActions(avatar, scene) {
  function update(s,now,elapsed,dt){
   const smoke=s.smoking===true,phase=smoke?s.smokePhase:s.action;
   cigarette.visible=smoke;
-  const lift=smoke&&phase==='inhale';
+  thumb.visible=smoke;
+  const beverage=s.drinking===true&&!smoke&&s.realm==='campus';
+  const drinking=beverage&&s.drinkPhase==='drink';
+  const dizzy=beverage&&s.drinkPhase==='dizzy';
+  if(beverage&&!bottle)addBottle();
+  if(bottle){
+   bottle.visible=beverage;
+   bottleCap.visible=beverage&&!drinking&&!dizzy;
+  }
+  const lift=smoke&&phase==='inhale'||drinking;
   handLift+=(Number(lift)-handLift)*(1-Math.exp(-Math.max(0,dt)*6));
-  if(!smoke)handLift=0;
-  smokingArm.visible=smoke;
+  if(!smoke&&!beverage)handLift=0;
+  smokingArm.visible=smoke||beverage;
   // The observer sees the avatar's right hand, with the cigarette attached to it.
   // Idle non-smokers keep their untouched arm pose. Avoiding these vector and
   // quaternion updates per peer is significant in a populated courtyard.
-  if(smoke||handLift>.001){
+  if(smoke||beverage){
    handPosition.set(-.95+.63*handLift,1.75+.89*handLift,1.12+.23*handLift);
    elbow.set(-1.05,1.86+.30*handLift,.95+.15*handLift);
-   grip.position.copy(handPosition);grip.rotation.x=.30*(1-handLift);
+   if(beverage){
+    handPosition.set(-.92+.82*handLift,1.62+1.02*handLift, .45+.95*handLift);
+    elbow.set(-.83,1.60+.50*handLift,.36+.50*handLift);
+    bottle.rotation.set(-1.34*handLift,0,.15*(1-handLift));
+    grip.rotation.x=0;
+   }else{
+    grip.rotation.x=.30*(1-handLift);
+   }
+   grip.position.copy(handPosition);
    connectArm(upperArm,shoulder,elbow);connectArm(forearm,elbow,handPosition);
   }
   const burn=Number.isFinite(s.smokeBurn)?Math.max(.2,Math.min(1,s.smokeBurn)):1;
   stick.scale.y=burn;stick.position.z=.085+.275*burn;tip.position.z=.085+.55*burn;
   ember.emissiveIntensity=lift?1.8:.1;
-  avatar.userData.parts.arm0.visible=!smoke;
+  avatar.userData.parts.arm0.visible=!smoke&&!beverage;
   const action=phase==='inhale'?'inhale':phase==='exhale'?'exhale':'idle';
   const held=Math.max(0,Math.min(120,s.held+(action==='inhale'?elapsed:0)));
   // Smoking uses the expression, but never the sigh's held-time complexion.
-  avatar.userData.animate(now/1000,s.realm==='sky'&&s.skyPose==='sleep'?'sleep':action,smoke?0:held);
+  const expression=drinking?'drink':dizzy?'drink-dizzy':s.realm==='sky'&&s.skyPose==='sleep'?'sleep':action;
+  const drinkAge=drinking&&Number.isFinite(s.drinkAge)?Math.max(0,s.drinkAge+elapsed):0;
+  avatar.userData.animate(now/1000,expression,beverage?drinkAge:smoke?0:held);
   // Retain the release timeline across idle packets and animate every frame.
   if(s.sighEvent>0&&Number.isFinite(s.sighAge)&&s.sighVisual?.origin?.length===3&&s.sighVisual.origin.every(Number.isFinite)){
    if(s.sighEvent!==sighEvent){sighEvent=s.sighEvent;sighStarted=now-(Math.max(0,s.sighAge)+elapsed)*1000;}
