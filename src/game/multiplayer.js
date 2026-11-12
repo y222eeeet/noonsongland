@@ -77,7 +77,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   peer.applyPose=applyPose;peers.set(id,peer);return peer
  }
  const NAME_LABEL_HEIGHT_PX=22,NAME_LABEL_ASPECT=4;
- function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='900 44px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=7;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#55406f';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.center.set(.5,0);sprite.position.y=5.45;sprite.scale.set(4.8,1.2,1);return sprite}
+ function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='900 88px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=14;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#55406f';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.center.set(.5,0);sprite.position.y=5.45;sprite.scale.set(4.8,1.2,1);return sprite}
  function keepNameLabelSize(sprite,anchor){
   if(!sprite||!camera?.isPerspectiveCamera||!renderer)return;
   const viewportHeight=Math.max(1,renderer.domElement.clientHeight),distance=Math.max(.1,camera.position.distanceTo(anchor));
