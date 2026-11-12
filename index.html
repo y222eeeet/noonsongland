@@ -24,6 +24,7 @@ import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
 import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
+import { createSled, placeSled, SLED_RIDER_OFFSET } from './src/models/sled.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
@@ -167,22 +168,31 @@ const sledButton=document.createElement('button');sledButton.type='button';sledB
 // celebration happens on the free, green lower lawn, never in a blocked tile.
 // Steering bounds come from the snowfield itself.  This keeps the full expanded
 // field usable and leaves only a sled-width safety margin at its outer edges.
-const sledEdgeInset=.55,sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
+const sledEdgeInset=2.05,sledCourse=Object.freeze({start:{x:-45.1,z:42.25},finish:{x:.25,z:42.25},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
 const sledLyrics=Object.freeze(['흰 눈 사이로~','썰매를 타고~','달리는 기분~','상쾌도 하다~']);
 let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0,sledLyricIndex=-1;
-const sled=new T.Group(),sledWood=new T.MeshStandardMaterial({color:'#b9835f',roughness:.76}),sledTrim=new T.MeshStandardMaterial({color:'#f8e9d5',roughness:.68});
-function sledPiece(geometry,material,x,y,z,rotation=0){const piece=new T.Mesh(geometry,material);piece.position.set(x,y,z);piece.rotation.z=rotation;sled.add(piece);return piece}
-[-.43,.43].forEach(z=>{sledPiece(new T.BoxGeometry(1.85,.12,.12),sledWood,0,.13,z);sledPiece(new T.CylinderGeometry(.065,.065,1.9,10),sledTrim,.12,.02,z,Math.PI/2)});sledPiece(new T.BoxGeometry(.9,.16,.78),sledWood,-.18,.35,0);sledPiece(new T.BoxGeometry(.12,.55,.78),sledWood,-.72,.62,0,-.36);sled.visible=false;scene.add(sled);
-const summitSled=sled.clone();summitSled.position.set(-45.15,routeHeight(-45.15,44.65)+.08,44.65);summitSled.rotation.y=Math.PI/2;scene.add(summitSled);
+const sled=createSled();
+sled.visible=false;
+scene.add(sled);
+const summitSled=sled.clone();
+placeSled(summitSled,-45.1,43.85,Math.PI/2);
+scene.add(summitSled);
+const sledSeatOffset=new T.Vector3();
+function positionSledRider(x,z,yaw){
+ placeSled(sled,x,z,yaw);
+ sledSeatOffset.set(0,SLED_RIDER_OFFSET,0).applyQuaternion(sled.quaternion);
+ p.position.copy(sled.position).add(sledSeatOffset);
+ p.rotation.set(0,yaw,0);
+ p.userData.groundY=sled.position.y;
+}
 const medal=new T.Group(),medalRibbon=new T.MeshStandardMaterial({color:'#8f7ac2',roughness:.7}),medalGold=new T.MeshStandardMaterial({color:'#f4cd58',roughness:.42,metalness:.18});
 const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRight=ribbonLeft.clone(),medalDisk=new T.Mesh(new T.CylinderGeometry(.22,.22,.07,20),medalGold);ribbonLeft.position.set(-.11,2.40,.75);ribbonLeft.rotation.z=.28;ribbonRight.position.set(.11,2.40,.75);ribbonRight.rotation.z=-.28;medalDisk.position.set(0,2.12,.80);medalDisk.rotation.x=Math.PI/2;medal.add(ribbonLeft,ribbonRight,medalDisk);medal.visible=false;p.add(medal);
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
-function sledHeight(x,z){return routeHeight(x,z)+.46}
 function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
 function setSledLyric(index){if(index===sledLyricIndex)return;sledLyricIndex=index;sighStatus.classList.add('sled-lyric');sighStatus.innerHTML=`♪ <strong><em>${sledLyrics[index]}</em></strong> ♪`}
 function clearSledLyric(){sledLyricIndex=-1;sighStatus.classList.remove('sled-lyric')}
-function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;setSledLyric(0);snapCamera=true}
-function finishSledRide(now){sledState='finish';sled.visible=false;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;clearSledLyric();sighStatus.textContent='완주!';snapCamera=true}
+function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sledSteer=0;sled.visible=true;summitSled.visible=false;positionSledRider(sledCourse.start.x,sledCourse.start.z,Math.PI/2);setSledLyric(0);snapCamera=true}
+function finishSledRide(now){sledState='finish';sled.visible=false;summitSled.visible=true;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;clearSledLyric();sighStatus.textContent='완주!';snapCamera=true}
 function updateSled(now,dt){
  if(sledState==='idle')return;
  if(sledState==='riding'){
@@ -190,17 +200,19 @@ function updateSled(now,dt){
   // reversed from walking controls so the camera-facing left/right feel right.
   const keyboard=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
   const desired=mobileControls?-mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
-  p.position.x+=sledCourse.speed*dt;p.position.z=T.MathUtils.clamp(p.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
-  const progress=T.MathUtils.clamp((p.position.x-sledCourse.start.x)/(sledCourse.finish.x-sledCourse.start.x),0,.9999);setSledLyric(Math.min(sledLyrics.length-1,Math.floor(progress*sledLyrics.length)));
-  p.position.y=sledHeight(p.position.x,p.position.z);p.rotation.set(0,Math.atan2(sledCourse.speed,sledSteer*4.0),0);p.userData.groundY=p.position.y-.46;
-  sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sled.rotation.z=-sledSteer*.10;walking=false;
-  if(p.position.x>=sledCourse.finish.x)finishSledRide(now);
+  const x=Math.min(sledCourse.finish.x,sled.position.x+sledCourse.speed*dt);
+  const z=T.MathUtils.clamp(sled.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
+  const progress=T.MathUtils.clamp((x-sledCourse.start.x)/(sledCourse.finish.x-sledCourse.start.x),0,.9999);
+  setSledLyric(Math.min(sledLyrics.length-1,Math.floor(progress*sledLyrics.length)));
+  positionSledRider(x,z,Math.atan2(sledCourse.speed,sledSteer*4.0));
+  walking=false;
+  if(x>=sledCourse.finish.x)finishSledRide(now);
   return;
  }
  if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
 function applySledPose(now){
- if(sledState==='riding'){part.leg0.rotation.x=part.leg1.rotation.x=-1.12;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
+ if(sledState==='riding'){p.rotation.setFromQuaternion(sled.quaternion,'YXZ');part.leg0.rotation.x=part.leg1.rotation.x=-1.72;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
  if(sledState==='finish'){const wave=Math.sin(now*.012)*.62;part.arm0.rotation.z=.7+wave;part.arm1.rotation.z=-.7-wave;part.arm0.rotation.x=-.38;part.arm1.rotation.x=-.38;medal.rotation.y=Math.sin(now*.004)*.08}
 }
 sledButton.addEventListener('click',startSledRide);
