@@ -24,11 +24,33 @@ export function createGuestbook(scene,camera,renderer,obstacles,canOpen=()=>true
  const papers=[
   [220,200,240,210,-.05],[640,280,360,430,.035],[1180,180,210,190,-.08],
   [1720,330,410,470,-.025],[2290,190,260,230,.06],[2860,280,330,390,-.055],
-  [3540,210,420,300,.03],[3900,580,210,250,-.06],
+  null,null,
   [220,760,300,330,.04],[1050,740,370,260,.065],[1510,850,220,190,-.04],
-  [2220,770,410,320,-.035],[3070,810,250,210,.055],[3560,790,320,290,-.03]
+  [2220,770,410,320,-.035],[3070,810,250,210,.055]
  ];
- papers.forEach(([x,y,w,h,angle],i)=>paper(x,y,w,h,angle,i));
+ papers.forEach((note,i)=>{if(note)paper(...note,i)});
+
+ // Grain in the letter strokes lets the cork show through like chalk dust.
+ const chalk=document.createElement('canvas');
+ chalk.width=850;chalk.height=460;
+ const lettering=chalk.getContext('2d');
+ const chalkFont='"Nanum Pen Script", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif';
+ lettering.textAlign='center';lettering.textBaseline='middle';
+ lettering.fillStyle='#3e2450';
+ lettering.font=`bold 144px ${chalkFont}`;
+ lettering.fillText('<떠든 송이>',425,128,800);
+ lettering.font=`bold 174px ${chalkFont}`;
+ lettering.fillText('보라송이',425,326,800);
+ const grain=lettering.getImageData(0,0,chalk.width,chalk.height);
+ let seed=2026;
+ for(let i=3;i<grain.data.length;i+=4){
+  if(!grain.data[i])continue;
+  seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+  const dust=seed/4294967296;
+  grain.data[i]*=dust<.09?.24:.72+dust*.28;
+ }
+ lettering.putImageData(grain,0,0);
+ a.drawImage(chalk,3195,260);
  const texture=new T.CanvasTexture(art);texture.colorSpace=T.SRGBColorSpace;
  // Front faces Myungshin (west); the east-facing back is plain cork.
  const paperMaterial=new T.MeshBasicMaterial({map:texture,color:'#ffffff'});
