@@ -14,7 +14,6 @@ import { createGuestbook } from './src/game/guestbook.js';
 import { unifyWorldFloors } from './src/game/floors.js';
 import { createDayNight } from './src/game/day-night.js';
 import { createCigarettePack } from './src/models/cigarette-pack.js';
-import { findSledFinishSpot, isSledFinishOccupied } from './src/game/sled-finish.js';
 import { createMultiplayer } from './src/game/multiplayer.js';
 import { createDizzySpirals } from './src/models/dizzy-spirals.js';
 import { createSongi, applyBenchPose } from './src/models/songi.js';
@@ -171,7 +170,7 @@ const sledButton=document.createElement('button');sledButton.type='button';sledB
 // Steering bounds come from the snowfield itself.  This keeps the full expanded
 // field usable and leaves only a sled-width safety margin at its outer edges.
 const sledStartZ=ROUTES.sledHill.z1-3.75;
-const sledEdgeInset=2.05,sledCourse=Object.freeze({start:{x:-45.1,z:sledStartZ},finish:{x:.25,z:sledStartZ},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
+const sledEdgeInset=2.05,sledFinishStep=2.6,sledCourse=Object.freeze({start:{x:-45.1,z:sledStartZ},finish:{x:.25,z:sledStartZ},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
 const sledLyrics=Object.freeze(['흰 눈 사이로~','썰매를 타고~','달리는 기분~','상쾌도 하다~']);
 let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0,sledLyricIndex=-1;
 const sled=createSled();
@@ -199,15 +198,15 @@ function placeSledFinisher(spot){
  p.position.set(spot.x,surfaceHeight(spot.x,spot.z)+.07,spot.z);
  p.userData.groundY=p.position.y;
 }
-function chooseSledFinishSpot(players){
- const {exit}=sledCourse,exitY=surfaceHeight(exit.x,exit.z);
- return findSledFinishSpot(exit,worldBounds,players,(x,z)=>
-  traversal.canOccupy(x,z,worldBounds)&&Math.abs(surfaceHeight(x,z)-exitY)<.15&&!hitsCampusObstacle(x,z)
- );
+function sledFinishSpot(){
+ // End the run from the actual sled endpoint: Song-i steps one stride forward
+ // in the same direction they were travelling, never to a random finish tile.
+ const yaw=p.rotation.y;
+ return {x:sled.position.x+Math.sin(yaw)*sledFinishStep,z:sled.position.z+Math.cos(yaw)*sledFinishStep};
 }
 function finishSledRide(now){
  sledState='finish';sled.visible=false;summitSled.visible=true;
- placeSledFinisher(chooseSledFinishSpot(multiplayer.campusPlayers())||sledCourse.exit);
+ placeSledFinisher(sledFinishSpot());
  p.rotation.set(0,Math.PI/2,0);medal.visible=true;sledFinishStarted=now;
  clearSledLyric();sighStatus.textContent='완주!';snapCamera=true;multiplayer.flush();
 }
@@ -226,13 +225,6 @@ function updateSled(now,dt){
   walking=false;
   if(x>=sledCourse.finish.x)finishSledRide(now);
   return;
- }
- if(sledState==='finish'&&now-sledFinishStarted<3000){
-  const players=multiplayer.campusPlayers({yieldingToFinishers:true});
-  if(isSledFinishOccupied(p.position.x,p.position.z,players)){
-   const spot=chooseSledFinishSpot(players);
-   if(spot){placeSledFinisher(spot);snapCamera=true;multiplayer.flush()}
-  }
  }
  if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;resetSledClap(part);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
