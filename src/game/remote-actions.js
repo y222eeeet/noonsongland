@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { createDizzySpiralSet } from '../models/dizzy-spirals.js';
 
 // Geometry is immutable after construction, so every remote effect can share
 // these GPU buffers. Materials remain per avatar because opacity and embers
@@ -18,6 +19,7 @@ export function createRemoteActions(avatar, scene) {
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
  const shoulder=new T.Vector3(-.85,2.03,.8),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
  let handLift=0;
+ let dizzySpirals=null;
  let bottle=null,bottleCap=null;
  function addBottle(){
   bottle=new T.Group();
@@ -59,6 +61,20 @@ export function createRemoteActions(avatar, scene) {
   const beverage=s.drinking===true&&!smoke&&s.realm==='campus';
   const drinking=beverage&&s.drinkPhase==='drink';
   const dizzy=beverage&&s.drinkPhase==='dizzy';
+  if(dizzy&&!dizzySpirals){
+   dizzySpirals=createDizzySpiralSet(2);
+   avatar.add(dizzySpirals);
+  }
+  if(dizzySpirals){
+   dizzySpirals.visible=dizzy;
+   if(dizzy)dizzySpirals.children.forEach((spiral,index)=>{
+    const side=index===0?-1:1;
+    const phase=now*.004+index*Math.PI;
+    spiral.position.set(side*1.63,4.44+Math.sin(phase)*.10,.48);
+    spiral.rotation.set(.20,side*.25,side*phase);
+    spiral.scale.setScalar(.49);
+   });
+  }
   if(beverage&&!bottle)addBottle();
   if(bottle){
    bottle.visible=beverage;
@@ -118,7 +134,7 @@ export function createRemoteActions(avatar, scene) {
   const life=(now-started)/1000;cloud.visible=event!==null&&life>=0&&life<duration;
   if(cloud.visible){const smokeCloud=cloud.userData.smoke;cloud.position.y+=dt*(smokeCloud?.65:1.3);cloud.position.x+=Math.sin(cloud.userData.rotation)*dt*.25;cloud.position.z+=Math.cos(cloud.userData.rotation)*dt*.25;material.color.set(smokeCloud?'#ece7f5':'#f8efff');material.opacity=.5*(1-life/duration);cloud.children.forEach((p,i)=>{p.position.set(Math.sin(i*2.4)*(.15+life*.15),(i%5)*.13,Math.cos(i*1.7)*.18);p.scale.setScalar(.6+life*.45)});}
  }
- function hide(){smokingArm.visible=false;cigarette.visible=false;cloud.visible=false;sigh.visible=false;avatar.userData.parts.arm0.visible=true;}
+ function hide(){smokingArm.visible=false;cigarette.visible=false;cloud.visible=false;sigh.visible=false;if(dizzySpirals)dizzySpirals.visible=false;avatar.userData.parts.arm0.visible=true;}
  function dispose(){hide();scene.remove(cloud,sigh);sighMaterial.dispose();material.dispose();}
  return {update,hide,dispose};
 }

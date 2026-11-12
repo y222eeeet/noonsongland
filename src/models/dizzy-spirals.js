@@ -1,6 +1,6 @@
 import * as T from 'three';
 
-export function createDizzySpirals(scene) {
+export function createDizzySpiralSet(count, overlay = false) {
  const points = Array.from({length: 41}, (_, index) => {
   const progress = index / 40;
   const angle = progress * Math.PI * 3.2;
@@ -11,14 +11,12 @@ export function createDizzySpirals(scene) {
  const cap = new T.SphereGeometry(.055, 8, 6);
  const material = new T.MeshStandardMaterial({
   color: '#d96e79', roughness: .75, emissive: '#b84457', emissiveIntensity: .45,
-  depthTest: false, depthWrite: false
+  depthTest: !overlay, depthWrite: !overlay
  });
  const root = new T.Group();
  root.name = 'chug-dizzy-spirals';
  root.visible = false;
- scene.add(root);
- const placements = [[-.70,.57,34],[.62,.43,27],[-.47,-.38,31],[.49,-.49,25]];
- placements.forEach(() => {
+ for (let index = 0; index < count; index++) {
   const spiral = new T.Group();
   const stroke = new T.Mesh(tube, material);
   const start = new T.Mesh(cap, material);
@@ -26,9 +24,16 @@ export function createDizzySpirals(scene) {
   start.position.copy(points[0]);
   end.position.copy(points.at(-1));
   spiral.add(stroke, start, end);
-  spiral.traverse(part => {part.renderOrder = 20;});
+  if (overlay) spiral.traverse(part => {part.renderOrder = 20;});
   root.add(spiral);
- });
+ }
+ return root;
+}
+
+export function createDizzySpirals(scene) {
+ const placements = [[-.70,.57,34],[.62,.43,27],[-.47,-.38,31],[.49,-.49,25]];
+ const root = createDizzySpiralSet(placements.length, true);
+ scene.add(root);
  return {
   hide() {root.visible = false;},
   update(camera, now, viewportHeight) {
