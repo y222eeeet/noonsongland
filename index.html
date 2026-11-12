@@ -175,13 +175,15 @@ const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRi
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
 function sledHeight(x,z){return routeHeight(x,z)+.46}
 function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
-function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sighStatus.textContent='방향키 또는 조이스틱으로 조향해요';snapCamera=true}
+function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sighStatus.textContent='좌우로만 조향해요';snapCamera=true}
 function finishSledRide(now){sledState='finish';sled.visible=false;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;sighStatus.textContent='완주!';snapCamera=true}
 function updateSled(now,dt){
  if(sledState==='idle')return;
  if(sledState==='riding'){
-  const keyboard=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
-  const desired=mobileControls?mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
+  // Sled steering deliberately uses one horizontal axis only.  Its sign is
+  // reversed from walking controls so the camera-facing left/right feel right.
+  const keyboard=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
+  const desired=mobileControls?-mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
   p.position.x+=sledCourse.speed*dt;p.position.z=T.MathUtils.clamp(p.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
   p.position.y=sledHeight(p.position.x,p.position.z);p.rotation.set(0,Math.atan2(sledCourse.speed,sledSteer*4.0),0);p.userData.groundY=p.position.y-.46;
   sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sled.rotation.z=-sledSteer*.10;walking=false;
@@ -424,7 +426,7 @@ function move(x,z,dt){
  if(stepZ&&!hit(p.position.x,p.position.z+stepZ)){p.position.z+=stepZ;moved=true}
  return moved;
 }
-function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=(e.clientX-cx)/43,y=(e.clientY-cy)/43,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}if(mobileControls){mobileMove={x,y};joyV.x=0;joyV.z=-d;if(d>.08){const dx=-Math.cos(mobileYaw)*x-Math.sin(mobileYaw)*y,dz=Math.sin(mobileYaw)*x-Math.cos(mobileYaw)*y;p.rotation.y=Math.atan2(dx,dz)}}else{joyV.x=-x*.35;joyV.z=y}stick.style.transform=`translate(${x*27}px,${y*27}px)`}
+function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=(e.clientX-cx)/43,y=(e.clientY-cy)/43,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}if(mobileControls){if(sledState!=='idle'){mobileMove={x,y:0};joyV.x=joyV.z=0;stick.style.transform=`translate(${x*27}px,0px)`;return}mobileMove={x,y};joyV.x=0;joyV.z=-d;if(d>.08){const dx=-Math.cos(mobileYaw)*x-Math.sin(mobileYaw)*y,dz=Math.sin(mobileYaw)*x-Math.cos(mobileYaw)*y;p.rotation.y=Math.atan2(dx,dz)}}else{joyV.x=-x*.35;joyV.z=y}stick.style.transform=`translate(${x*27}px,${y*27}px)`}
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);joyMove(e)});joy.addEventListener('pointermove',e=>joy.hasPointerCapture(e.pointerId)&&joyMove(e));['pointerup','pointercancel'].forEach(e=>joy.addEventListener(e,()=>{joyV.x=joyV.z=0;mobileMove={x:0,y:0};stick.style.transform=''}));
 let cameraSwipe=null;renderer.domElement.addEventListener('pointerdown',e=>{if(mobileControls&&!sighMode)cameraSwipe={x:e.clientX,y:e.clientY}});renderer.domElement.addEventListener('pointermove',e=>{if(!cameraSwipe)return;const dx=e.clientX-cameraSwipe.x,dy=e.clientY-cameraSwipe.y;if(Math.abs(dx)>1||Math.abs(dy)>1){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.55,mobilePitch-dy*.006));cameraSwipe.x=e.clientX;cameraSwipe.y=e.clientY;if(smokeMode||chugMode)p.rotation.y=mobileYaw;faceView=false;snapCamera=true}});['pointerup','pointercancel'].forEach(type=>renderer.domElement.addEventListener(type,()=>cameraSwipe=null));
 // Fixed view toward Soonheongwan: Song-i stays small in the lower foreground.
