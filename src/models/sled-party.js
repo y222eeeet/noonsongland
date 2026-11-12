@@ -5,7 +5,7 @@ export const SLED_PARTY_DURATION = 2.8;
 const piecesPerPopper = 28;
 const launchPoints = [-1,1].map(side=>new T.Vector3(side*2.15,5.05,.32));
 const up = new T.Vector3(0,1,0);
-const aim = [-1,1].map(side=>new T.Vector3(side*.53,1,.10).normalize());
+const aim = [-1,1].map(side=>new T.Vector3(-side*.53,1,.10).normalize());
 
 export function createSledParty(avatar) {
  const group = new T.Group();
@@ -39,10 +39,12 @@ export function createSledParty(avatar) {
  const pose = new T.Object3D();
  const particles = Array.from({length:paper.count},(_,i)=>{
   paper.setColorAt(i,new T.Color(colors[i%colors.length]));
-  const side = i<piecesPerPopper?-1:1;
+  const index = i<piecesPerPopper?0:1;
   const angle = i*2.399963;
   const spread = .55+(i%7)*.19;
-  return {index:side<0?0:1,vx:side*(.75+(i%5)*.27)+Math.cos(angle)*spread,vy:2.8+(i%11)*.28,vz:Math.sin(angle)*spread,spin:2+(i%8)*.83,angle,delay:(i%5)*.024};
+  const vy = 2.8+(i%11)*.28;
+  const direction = aim[index];
+  return {index,vx:vy*direction.x/direction.y+Math.cos(angle)*spread*.42,vy,vz:Math.sin(angle)*spread,spin:2+(i%8)*.83,angle,delay:(i%5)*.024};
  });
  function update(age) {
   group.visible=Number.isFinite(age)&&age>=0&&age<SLED_PARTY_DURATION;
