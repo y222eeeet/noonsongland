@@ -155,7 +155,10 @@ export function createSongi() {
     blink:{eyes:closedEyes,mouth:[parts.mouth]},
     inhale:{eyes:smallEyes,mouth:[openMouth,mouthRim]},
     exhale:{eyes:closedEyes,mouth:[exhaleMouth,exhaleLip],brows},
-    sleep:{eyes:closedEyes,mouth:[parts.mouth]}
+    sleep:{eyes:closedEyes,mouth:[parts.mouth]},
+    // A finish pose may share the normal smile, but its closed eyes must still
+    // replace (rather than overlay) the regular eye layer.
+    win:{eyes:closedEyes,mouth:[parts.mouth]}
   };
   const allFaceLayers=[parts.eye0,parts.eye1,...smallEyes,...closedEyes,...brows,parts.mouth,openMouth,mouthRim,exhaleMouth,exhaleLip];
   function setFaceState(name){
@@ -228,7 +231,7 @@ export function createSongi() {
     const nod=drinking&&heldSeconds>=1&&gulp<.5?Math.sin(Math.PI*gulp/.5)**2:0;
     parts.headPivot.rotation.x=drinking?-.14-.065*nod:0;
     parts.headPivot.rotation.z=dizzy?Math.sin(elapsed*7)*.14:0;
-    const faceState=sleeping?'sleep':inhale||drinking?'inhale':exhale||dizzy?'exhale':blinking?'blink':'normal';
+    const faceState=state==='win'?'win':sleeping?'sleep':inhale||drinking?'inhale':exhale||dizzy?'exhale':blinking?'blink':'normal';
     setFaceState(faceState);
     // Reset the base eye scale every frame; blink uses its own closed-eye
     // layer, so an open and closed eye can never be rendered together.

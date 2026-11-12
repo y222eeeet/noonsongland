@@ -42,10 +42,13 @@ export function addSaehimAndRoutes(scene,obstacles,M){
   geometry.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
   geometry.setIndex([0,1,2,0,2,3,0,4,5,0,5,1,0,3,4,1,5,2]);
   geometry.computeVertexNormals();
-  mesh(geometry,material,0,0,0);
+  return mesh(geometry,material,0,0,0);
  }
  const snow=new T.MeshStandardMaterial({color:'#fffafa',roughness:.92});
- slope(ROUTES.sledHill,snow);
+ const sledSlope=slope(ROUTES.sledHill,snow);
+ // The interaction layer targets this exact surface, not the visual support
+ // beneath it, so clicking the snow can never select a nearby building.
+ sledSlope.name='sled-slope';sledSlope.userData.sledSlope=true;
  slope(ROUTES.ramp,M.path);
  const w=ROUTES.groundWalk;mesh(new T.BoxGeometry(w.x1-w.x0,.10,w.z1-w.z0),M.path,(w.x0+w.x1)/2,0,(w.z0+w.z1)/2);
  return {minX:-101,maxX:47,minZ:-70,maxZ:ROUTES.ramp.z1+2};
