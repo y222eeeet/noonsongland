@@ -162,7 +162,9 @@ const p=createSongi();p.rotation.y=Math.PI;const startArea=new URLSearchParams(l
 // Sledding is one committed run: from the upper deck, selecting the snow
 // immediately places Song-i on the start line, then rides to the finish.
 const sledButton=document.createElement('button');sledButton.type='button';sledButton.hidden=true;sledButton.textContent='썰매타기';sledButton.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#83b7d8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #456f8a44";game.append(sledButton);
-const sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:1.45,z:37.5},minZ:39.15,maxZ:44.85,speed:7.4});
+// The finish is deliberately beyond both the snow and registered hill route:
+// celebration happens on the free, green lower lawn, never in a blocked tile.
+const sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:4,z:29.5},minZ:39.15,maxZ:44.85,speed:7.4});
 let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0;
 const sled=new T.Group(),sledWood=new T.MeshStandardMaterial({color:'#b9835f',roughness:.76}),sledTrim=new T.MeshStandardMaterial({color:'#f8e9d5',roughness:.68});
 function sledPiece(geometry,material,x,y,z,rotation=0){const piece=new T.Mesh(geometry,material);piece.position.set(x,y,z);piece.rotation.z=rotation;sled.add(piece);return piece}
