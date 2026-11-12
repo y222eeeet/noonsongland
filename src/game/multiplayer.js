@@ -76,7 +76,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   };
   peer.applyPose=applyPose;peers.set(id,peer);return peer
  }
- const MOBILE_NAME_LABEL_HEIGHT_PX=22,DESKTOP_NAME_LABEL_HEIGHT_PX=44,NAME_LABEL_ASPECT=4;
+ const MOBILE_NAME_LABEL_HEIGHT_PX=22,DESKTOP_NAME_LABEL_HEIGHT_PX=33,NAME_LABEL_ASPECT=4;
  function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='900 88px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=14;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#55406f';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const material=new T.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false});const sprite=new T.Sprite(material);sprite.renderOrder=10000;sprite.center.set(.5,0);sprite.position.y=5.45;sprite.scale.set(4.8,1.2,1);return sprite}
  function keepNameLabelSize(sprite,anchor){
   if(!sprite||!camera?.isPerspectiveCamera||!renderer)return;
