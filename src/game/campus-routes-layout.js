@@ -6,13 +6,18 @@ export const ROUTES={
  // The decorative rear gate spans this lane but must never block its center.
  rearGatePassage:{x0:-96.7,x1:-93.3,z0:-28,z1:-7},
  southCourt:{x0:-70,x1:-47,z0:17,z1:46},
- ramp:{x0:-47,x1:0,z0:38,z1:46},
+ // Myeongshin hill: the snow field is reserved for sledding.  The narrow
+ // right-hand strip is the only walking route and reaches the small ground gap.
+ sledHill:{x0:-47,x1:2,z0:38,z1:46},
+ sledWalk:{x0:-47,x1:2,z0:42.45,z1:46},
  groundWalk:{x0:-2,x1:2,z0:18,z1:46},
  upper:10.78,lower:.05
 };
 export const inRect=(x,z,r)=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1;
+export const insideSledHill=(x,z)=>inRect(x,z,ROUTES.sledHill);
+export const onSledWalk=(x,z)=>inRect(x,z,ROUTES.sledWalk);
 export function routeHeight(x,z){
- const {stairs:s,ramp:r}=ROUTES;
+ const {stairs:s,sledHill:r}=ROUTES;
  if(inRect(x,z,s)){const step=Math.min(s.steps-1,Math.floor((z-s.z0)/(s.z1-s.z0)*s.steps));return ROUTES.lower+(ROUTES.upper-ROUTES.lower)*(1-step/s.steps)}
  if(inRect(x,z,r))return ROUTES.upper+(ROUTES.lower-ROUTES.upper)*(x-r.x0)/(r.x1-r.x0);
  if(inRect(x,z,ROUTES.smokingWalk)||inRect(x,z,ROUTES.smokingRear)||inRect(x,z,ROUTES.rearGatePassage)||inRect(x,z,ROUTES.southCourt))return ROUTES.upper;

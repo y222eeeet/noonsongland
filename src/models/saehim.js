@@ -35,9 +35,12 @@ export function addSaehimAndRoutes(scene,obstacles,M){
  // Solid treads share the exact heights used by traversal.
  const s=ROUTES.stairs,depth=(s.z1-s.z0)/s.steps;
  for(let i=0;i<s.steps;i++){const h=ROUTES.lower+(ROUTES.upper-ROUTES.lower)*(1-i/s.steps);mesh(new T.BoxGeometry(s.x1-s.x0,h-ROUTES.lower,depth),i%2?M.cream:M.path,(s.x0+s.x1)/2,(h+ROUTES.lower)/2,s.z0+(i+.5)*depth)}
- // One continuous sloping surface, with support underneath, not stacked floor patches.
- const r=ROUTES.ramp,vertices=[r.x0,ROUTES.upper,r.z0,r.x0,ROUTES.upper,r.z1,r.x1,ROUTES.lower,r.z1,r.x1,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z1];
- const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));g.setIndex([0,1,2,0,2,3,0,4,5,0,5,1,0,3,4,1,5,2]);g.computeVertexNormals();mesh(g,M.path,0,0,0);
+ // One continuous snow hill, with a separate right-side walking strip. Both
+ // share the route-height formula so the visual slope and walkable slope agree.
+ function slopeGeometry(r){const vertices=[r.x0,ROUTES.upper,r.z0,r.x0,ROUTES.upper,r.z1,r.x1,ROUTES.lower,r.z1,r.x1,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z0,r.x0,ROUTES.lower,r.z1],g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));g.setIndex([0,1,2,0,2,3,0,4,5,0,5,1,0,3,4,1,5,2]);g.computeVertexNormals();return g}
+ const snowHillMat=new T.MeshStandardMaterial({color:'#fffdf8',roughness:.92});
+ mesh(slopeGeometry(ROUTES.sledHill),snowHillMat,0,0,0);
+ const walk=mesh(slopeGeometry(ROUTES.sledWalk),M.path,0,.045,0);walk.name='myeongshin-sled-walkway';
  const w=ROUTES.groundWalk;mesh(new T.BoxGeometry(w.x1-w.x0,.10,w.z1-w.z0),M.path,(w.x0+w.x1)/2,0,(w.z0+w.z1)/2);
  return {minX:-101,maxX:47,minZ:-70,maxZ:50};
 }
