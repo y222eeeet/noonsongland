@@ -25,6 +25,7 @@ import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
 import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
+import { createSledParty } from './src/models/sled-party.js';
 import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider, resetSledClap } from './src/models/sled.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
@@ -187,6 +188,7 @@ function positionSledRider(x,z,yaw){
  p.rotation.set(0,yaw,0);
  p.userData.groundY=sled.position.y;
 }
+const sledParty=createSledParty(p);
 const medal=createSledMedal();medal.visible=false;p.add(medal);
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
 function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
@@ -485,7 +487,7 @@ let sittingBench=null,pendingBench=null,benchExit=null;
 currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(sledState!=='idle')return'sled';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
 canEnterAction=action=>canEnterActivity(currentActionMode(),action);
 clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;setFastWalk(false)};
-const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',sledFinishing:sledState==='finish',walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
+const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',sledFinishing:sledState==='finish',sledFinishAge:sledState==='finish'?(performance.now()-sledFinishStarted)/1000:0,walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
 sitButton.textContent='앉기';standButton.textContent='일어나기';
@@ -583,7 +585,7 @@ addEventListener('resize',resize);resize();
  document.querySelector('#name').textContent=p.position.x<-62?'✦ 1캠퍼스 · 명신관 뒤편':p.position.x<-53?'✦ 1캠퍼스 · 명신관':p.position.x<-38?'✦ 1캠퍼스 · 후문':p.position.x<-19?'✦ 1캠퍼스 · 진리관':'✦ 1캠퍼스 · 순헌관';
  if(layoutView){camera.position.set(-29,120,-20);camera.up.set(0,0,-1);camera.lookAt(-29,10,-20);}
  p.userData.animate(clock.elapsedTime,sledState==='finish'?'win':sighPhase==='inhale'?'inhale':sighPhase==='exhale'?'exhale':'idle',held);
- applySledPose(now);multiplayer.update(dt,now);
+ applySledPose(now);sledParty.update(sledState==='finish'?(now-sledFinishStarted)/1000:-1);multiplayer.update(dt,now);
  if(benchExit)updateBenchExit(now);else if(sittingBench)applyBenchPose(p,sittingBench.y);
  if(sittingBench&&!smokeMode){camera.position.copy(p.position).addScaledVector(forward,9);camera.position.y+=4.2;camera.lookAt(p.position.x,p.position.y+2.2,p.position.z)}
  updateDayNight(Date.now());updateWorldShadows(p.position);renderer.render(scene,camera);dismissLoading();

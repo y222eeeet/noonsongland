@@ -1,0 +1,72 @@
+import * as T from 'three';
+
+const colors = ['#ffca52','#ef759f','#63c9bf','#9a83ef','#76baf0','#f78c58'];
+export const SLED_PARTY_DURATION = 2.8;
+const piecesPerPopper = 28;
+const launchPoints = [-1,1].map(side=>new T.Vector3(side*2.15,5.05,.32));
+const up = new T.Vector3(0,1,0);
+const aim = [-1,1].map(side=>new T.Vector3(side*.53,1,.10).normalize());
+
+export function createSledParty(avatar) {
+ const group = new T.Group();
+ group.visible = false;
+ avatar.add(group);
+
+ const gold = new T.MeshStandardMaterial({color:'#ffbc43',roughness:.68});
+ const mint = new T.MeshStandardMaterial({color:'#65aa8b',roughness:.72});
+ const inside = new T.MeshStandardMaterial({color:'#865529',roughness:.86});
+ const poppers = launchPoints.map((point,index)=>{
+  const popper = new T.Group();
+  popper.quaternion.setFromUnitVectors(up,aim[index]);
+  for(let i=0;i<7;i++){
+   const radius = t=>T.MathUtils.lerp(.035,.27,t);
+   const band = new T.Mesh(new T.CylinderGeometry(radius((i+1)/7),radius(i/7),.12,16,1,true),i%2?mint:gold);
+   band.position.y=(i+.5)*.12-.84;
+   popper.add(band);
+  }
+  const opening = new T.Mesh(new T.CircleGeometry(.264,16),inside);
+  opening.rotation.x=-Math.PI/2;
+  opening.position.y=-.02;
+  popper.add(opening);
+  group.add(popper);
+  return popper;
+ });
+
+ const paper = new T.InstancedMesh(new T.PlaneGeometry(.16,.24),new T.MeshBasicMaterial({side:T.DoubleSide}),piecesPerPopper*2);
+ paper.frustumCulled=false;
+ paper.instanceMatrix.setUsage(T.DynamicDrawUsage);
+ group.add(paper);
+ const pose = new T.Object3D();
+ const particles = Array.from({length:paper.count},(_,i)=>{
+  paper.setColorAt(i,new T.Color(colors[i%colors.length]));
+  const side = i<piecesPerPopper?-1:1;
+  const angle = i*2.399963;
+  const spread = .55+(i%7)*.19;
+  return {index:side<0?0:1,vx:side*(.75+(i%5)*.27)+Math.cos(angle)*spread,vy:2.8+(i%11)*.28,vz:Math.sin(angle)*spread,spin:2+(i%8)*.83,angle,delay:(i%5)*.024};
+ });
+ function update(age) {
+  group.visible=Number.isFinite(age)&&age>=0&&age<SLED_PARTY_DURATION;
+  if(!group.visible)return;
+  poppers.forEach((popper,index)=>{
+   popper.visible=age<.82;
+   const scale=T.MathUtils.smoothstep(age,0,.12)*(1-T.MathUtils.smoothstep(age,.49,.82));
+   popper.scale.setScalar(scale*(1+.18*Math.sin(Math.min(1,age/.30)*Math.PI)));
+   popper.position.copy(launchPoints[index]).addScaledVector(aim[index],-.12*Math.sin(Math.min(1,age/.26)*Math.PI));
+  });
+  particles.forEach((particle,i)=>{
+   const t=Math.max(0,age-.12-particle.delay);
+   const {vx,vy,vz,spin,angle,index}=particle;
+   pose.position.copy(launchPoints[index]);
+   pose.position.x+=vx*t+Math.sin(angle+t*5)*t*.18;
+   pose.position.y+=vy*t-2.45*t*t;
+   pose.position.z+=vz*t+Math.cos(angle+t*4)*t*.14;
+   pose.rotation.set(angle+spin*t,angle*.31-t*3,angle*.7+t*4);
+   const scale=T.MathUtils.smoothstep(t,0,.07)*(1-T.MathUtils.smoothstep(age,2,SLED_PARTY_DURATION));
+   pose.scale.set(scale*(i%3===0?.5:1),scale,scale);
+   pose.updateMatrix();
+   paper.setMatrixAt(i,pose.matrix);
+  });
+  paper.instanceMatrix.needsUpdate=true;
+ }
+ return {update};
+}

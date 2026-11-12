@@ -1,3 +1,4 @@
+import { createSledParty, SLED_PARTY_DURATION } from '../models/sled-party.js';
 import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
 import { createSongi, applyBenchPose } from '../models/songi.js';
@@ -124,7 +125,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
   updateMatchTags();
   if(ready&&!document.hidden){
-   const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.drinking,state.drinkPhase,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
+   const action=JSON.stringify([state.realm,state.walking,state.action,state.sighEvent,state.smoking,state.smokePhase,state.smokeEvent,state.drinking,state.drinkPhase,state.sledFinishing,state.swimming,state.swimEnteredAt,state.swimOrbitAngle,state.swimDirection]);
    const moving=!lastPosition||Math.hypot(state.x-lastPosition.x,state.z-lastPosition.z)>.001||Math.abs(state.rotation-lastPosition.rotation)>.001;
    // Keep the original 30Hz movement stream: this is the quality floor for
    // nearby Song-i movement and interaction animation.
@@ -149,6 +150,10 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
    const swing=(s.walking||s.skyMotion?.walk===true)&&now-peer.last<2000?Math.sin(now/100)*.7:0,parts=m.userData.parts;
    parts.arm0.rotation.x=parts.leg1.rotation.x=swing;parts.arm1.rotation.x=parts.leg0.rotation.x=-swing;
    peer.effects.update(s,now,(now-peer.last)/1000,dt);peer.applyPose();
+   const finishAge=s.realm==='campus'&&s.sledFinishing===true&&Number.isFinite(s.sledFinishAge)
+    ?Math.max(0,s.sledFinishAge)+(now-peer.last)/1000:-1;
+   if(finishAge>=0&&finishAge<SLED_PARTY_DURATION)peer.sledParty??=createSledParty(m);
+   peer.sledParty?.update(finishAge);
   }
  }
  function updateBenchAvatars(){for(const peer of peers.values()){const seatY=peer.state?.seatedY;if(peer.mesh.visible&&peer.state?.seatedBench&&Number.isFinite(seatY))applyBenchPose(peer.mesh,seatY)}}
