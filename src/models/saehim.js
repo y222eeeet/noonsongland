@@ -49,6 +49,19 @@ export function addSaehimAndRoutes(scene,obstacles,M){
  // The interaction layer targets this exact surface, not the visual support
  // beneath it, so clicking the snow can never select a nearby building.
  sledSlope.name='sled-slope';sledSlope.userData.sledSlope=true;
+ // Low, soft-yellow guard walls follow both edges of the snowfield. Their
+ // height is around a seated Song-i, while the open centre remains untouched.
+ const guard=new T.MeshStandardMaterial({color:'#fff0a8',roughness:.82});
+ const guardCap=new T.MeshStandardMaterial({color:'#ffe374',roughness:.72});
+ const hill=ROUTES.sledHill,run=hill.x1-hill.x0,drop=ROUTES.lower-ROUTES.upper;
+ const guardAngle=Math.atan2(drop,run),guardLength=Math.hypot(run,drop),guardHeight=2.28;
+ const guardX=(hill.x0+hill.x1)/2,guardY=(ROUTES.upper+ROUTES.lower)/2;
+ for(const z of [hill.z0-.16,hill.z1+.16]){
+  const wall=mesh(new T.BoxGeometry(guardLength,guardHeight,.36),guard,guardX,guardY+Math.cos(guardAngle)*guardHeight/2,z);
+  wall.rotation.z=guardAngle;
+  const cap=mesh(new T.BoxGeometry(guardLength+.16,.17,.54),guardCap,guardX,guardY+Math.cos(guardAngle)*(guardHeight+.085),z);
+  cap.rotation.z=guardAngle;
+ }
  slope(ROUTES.ramp,M.path);
  return {minX:-101,maxX:47,minZ:-70,maxZ:Math.max(ROUTES.ramp.z1,ROUTES.sledHill.z1)+2};
 }
