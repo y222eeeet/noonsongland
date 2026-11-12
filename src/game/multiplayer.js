@@ -154,9 +154,17 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function updateBenchAvatars(){for(const peer of peers.values()){const seatY=peer.state?.seatedY;if(peer.mesh.visible&&peer.state?.seatedBench&&Number.isFinite(seatY))applyBenchPose(peer.mesh,seatY)}}
  function occupiedSkyBeds(count=Infinity){const occupied=new Set();for(const peer of peers.values()){const state=peer.state;if(state?.realm==='sky'&&['sleep','transition'].includes(state.skyPose)&&Number.isInteger(state.skyBedIndex)&&state.skyBedIndex>=0&&state.skyBedIndex<count)occupied.add(state.skyBedIndex)}return occupied}
  function occupiedBenches(){const occupied=new Set();for(const peer of peers.values()){const id=peer.state?.seatedBench;if(typeof id==='string'&&id)occupied.add(id)}return occupied}
+ function campusPlayers({yieldingToFinishers=false}={}){
+  return [...peers].flatMap(([id,peer])=>{
+   const state=peer.state;
+   if(state?.realm!=='campus'||state.swimming)return [];
+   if(yieldingToFinishers&&state.sledFinishing===true&&id>connectionId)return [];
+   return [{x:state.x,z:state.z},{x:peer.mesh.position.x,z:peer.mesh.position.z}];
+  });
+ }
  function activeSwimmers(){const now=performance.now();return [...peers.values()].filter(peer=>peer.state?.swimming&&now-peer.last<5000).map(peer=>peer.state)}
  const heartbeat=setInterval(()=>{const now=performance.now();if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}else if(ready&&now-lastSend>=1000)void broadcast()},1000);
  function dispose(){disposed=true;requestButton.remove();modal.remove();toast.remove();clearMatchTags();selfMatchActions.dispose();if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}identity=null;ready=false;if(channel)void supabase.removeChannel(channel);channel=null;for(const id of peers.keys())remove(id);clearInterval(heartbeat);window.removeEventListener('pagehide',dispose)}
  window.addEventListener('pagehide',dispose,{once:true});
- return {update:(dt,now)=>{update(dt,now);updateBenchAvatars()},dispose,occupiedSkyBeds,occupiedBenches,activeSwimmers,toast:showToast,flush:()=>{lastAction='';void broadcast()}};
+ return {update:(dt,now)=>{update(dt,now);updateBenchAvatars()},dispose,occupiedSkyBeds,occupiedBenches,activeSwimmers,campusPlayers,toast:showToast,flush:()=>{lastAction='';void broadcast()}};
 }
