@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { supabase } from '../lib/supabase.js';
 import { daylightAt } from './day-night.js';
+import chalkImageUrl from '../assets/guestbook-white-chalk.png';
 export function createGuestbook(scene,camera,renderer,obstacles,canOpen=()=>true){
  const board=new T.Group();board.position.set(-46.9,10.78,7);scene.add(board);
  const boardMaterials=[];
@@ -30,28 +31,15 @@ export function createGuestbook(scene,camera,renderer,obstacles,canOpen=()=>true
  ];
  papers.forEach((note,i)=>{if(note)paper(...note,i)});
 
- // Grain in the letter strokes lets the cork show through like chalk dust.
- const chalk=document.createElement('canvas');
- chalk.width=850;chalk.height=460;
- const lettering=chalk.getContext('2d');
- const chalkFont='"Nanum Pen Script", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif';
- lettering.textAlign='center';lettering.textBaseline='middle';
- lettering.fillStyle='#3e2450';
- lettering.font=`bold 144px ${chalkFont}`;
- lettering.fillText('<떠든 송이>',425,128,800);
- lettering.font=`bold 174px ${chalkFont}`;
- lettering.fillText('보라송이',425,326,800);
- const grain=lettering.getImageData(0,0,chalk.width,chalk.height);
- let seed=2026;
- for(let i=3;i<grain.data.length;i+=4){
-  if(!grain.data[i])continue;
-  seed=(Math.imul(seed,1664525)+1013904223)>>>0;
-  const dust=seed/4294967296;
-  grain.data[i]*=dust<.09?.24:.72+dust*.28;
- }
- lettering.putImageData(grain,0,0);
- a.drawImage(chalk,3195,260);
  const texture=new T.CanvasTexture(art);texture.colorSpace=T.SRGBColorSpace;
+ const chalk=new Image();
+ chalk.onload=()=>{
+  const width=810;
+  const height=width*chalk.naturalHeight/chalk.naturalWidth;
+  a.drawImage(chalk,3620-width/2,490-height/2,width,height);
+  texture.needsUpdate=true;
+ };
+ chalk.src=chalkImageUrl;
  // Front faces Myungshin (west); the east-facing back is plain cork.
  const paperMaterial=new T.MeshBasicMaterial({map:texture,color:'#ffffff'});
  const backMaterial=new T.MeshStandardMaterial({color:'#cda988',roughness:.95});
