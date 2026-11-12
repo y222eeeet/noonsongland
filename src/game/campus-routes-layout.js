@@ -14,6 +14,8 @@ export const ROUTES={
  upper:10.78,lower:.05
 };
 export const inRect=(x,z,r)=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1;
+export const MOVING_WALK_SPEED=4.2;
+export const onMovingWalk=(x,z)=>inRect(x,z,ROUTES.ramp);
 export const insideSledHill=(x,z)=>inRect(x,z,ROUTES.sledHill)&&z<ROUTES.ramp.z0;
 export function routeHeight(x,z){
  const {stairs:s,ramp,sledHill}=ROUTES;

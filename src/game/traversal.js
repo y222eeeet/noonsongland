@@ -1,4 +1,4 @@
-import { routeHeight, insideSledHill } from './campus-routes-layout.js';
+import { routeHeight, insideSledHill, onMovingWalk } from './campus-routes-layout.js';
 import { insidePond, onStoneBridge, pondWalkHeight } from './pond-layout.js';
 // One source of truth for floors that players may occupy.
 // Visual terrain can be larger for scenery/support, but it never grants movement.
@@ -36,6 +36,7 @@ export function createTraversal(){
  function canOccupy(x,z,bounds){if(insidePond(x,z)&&!onStoneBridge(x,z)&&pondWalkHeight(x,z)===null&&heightAt(x,z)<2)return false;if(insideSledHill(x,z))return false;return x>=bounds.minX&&x<=bounds.maxX&&z>=bounds.minZ&&z<=bounds.maxZ;}
  function canStep(fromX,fromZ,toX,toZ,bounds){
   if(!canOccupy(toX,toZ,bounds))return false;
+  if(toX>fromX&&(onMovingWalk(fromX,fromZ)||onMovingWalk(toX,toZ)))return false;
   const fromStair=stairZoneAt(fromX,fromZ),toStair=stairZoneAt(toX,toZ);
   // Stairs are a continuous traversal lane, not a sequence of tiny cliffs.
   // Once on a tread, players may freely move up, down, or sideways within
