@@ -37,7 +37,9 @@ const commonControls=Object.freeze({face:false,sigh:false,fast:false,smoke:false
 const controls=overrides=>Object.freeze({...commonControls,...overrides});
 export const MODE_UI_RULES=Object.freeze({
  [PLAYER_MODE.IDLE]:controls({face:true,sigh:true,fast:true,smoke:true,chug:true,joystick:true}),
- [PLAYER_MODE.SEATED]:controls({smoke:true,stand:true,standExitSlot:0}),
+ // Standing is the seated action, so it keeps the same bottom-centre action
+ // treatment as inhale instead of joining the top-left mode-exit controls.
+ [PLAYER_MODE.SEATED]:controls({smoke:true,stand:true}),
  [PLAYER_MODE.SMOKE]:controls({smoke:true,smokeAction:true,smokeExitSlot:0}),
  [PLAYER_MODE.SEATED_SMOKE]:controls({smoke:true,smokeAction:true,smokeExitSlot:0}),
  [PLAYER_MODE.GUESTBOOK]:commonControls,[PLAYER_MODE.SIGH]:controls({sigh:true,sighExitSlot:0}),[PLAYER_MODE.SWIM]:commonControls,
