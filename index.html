@@ -159,11 +159,11 @@ function surfaceHeight(x,z,realm){
 }
 // Continuous beveled Songi avatar, shared front and rear geometry.
 const p=createSongi();p.rotation.y=Math.PI;const startArea=new URLSearchParams(location.search).get('area');p.position.set(startArea==='guestbook'?-54:startArea==='myungshin'?-58:startArea==='jinri'?-51:0,0,startArea==='guestbook'?4:startArea==='myungshin'?4:startArea==='jinri'?-15:8);if(startArea==='guestbook')p.rotation.y=Math.PI/2;scene.add(p);const part=p.userData.parts;
-// Sledding is one committed run: after selecting the snow field, Song-i
-// approaches via the moving walk, rides the full course, then celebrates.
+// Sledding is one committed run: from the upper deck, selecting the snow
+// immediately places Song-i on the start line, then rides to the finish.
 const sledButton=document.createElement('button');sledButton.type='button';sledButton.hidden=true;sledButton.textContent='썰매타기';sledButton.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#83b7d8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #456f8a44";game.append(sledButton);
-const sledCourse=Object.freeze({entry:{x:1.2,z:48.45},start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:1.45,z:37.5},minZ:39.15,maxZ:44.85,speed:7.4});
-let sledState='idle',sledApproachStage=0,sledFinishStarted=0,sledSteer=0;
+const sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:1.45,z:37.5},minZ:39.15,maxZ:44.85,speed:7.4});
+let sledState='idle',sledFinishStarted=0,sledSteer=0;
 const sled=new T.Group(),sledWood=new T.MeshStandardMaterial({color:'#b9835f',roughness:.76}),sledTrim=new T.MeshStandardMaterial({color:'#f8e9d5',roughness:.68});
 function sledPiece(geometry,material,x,y,z,rotation=0){const piece=new T.Mesh(geometry,material);piece.position.set(x,y,z);piece.rotation.z=rotation;sled.add(piece);return piece}
 [-.43,.43].forEach(z=>{sledPiece(new T.BoxGeometry(1.85,.12,.12),sledWood,0,.13,z);sledPiece(new T.CylinderGeometry(.065,.065,1.9,10),sledTrim,.12,.02,z,Math.PI/2)});sledPiece(new T.BoxGeometry(.9,.16,.78),sledWood,-.18,.35,0);sledPiece(new T.BoxGeometry(.12,.55,.78),sledWood,-.72,.62,0,-.36);sled.visible=false;scene.add(sled);
@@ -172,19 +172,11 @@ const medal=new T.Group(),medalRibbon=new T.MeshStandardMaterial({color:'#8f7ac2
 const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRight=ribbonLeft.clone(),medalDisk=new T.Mesh(new T.CylinderGeometry(.22,.22,.07,20),medalGold);ribbonLeft.position.set(-.11,2.40,.75);ribbonLeft.rotation.z=.28;ribbonRight.position.set(.11,2.40,.75);ribbonRight.rotation.z=-.28;medalDisk.position.set(0,2.12,.80);medalDisk.rotation.x=Math.PI/2;medal.add(ribbonLeft,ribbonRight,medalDisk);medal.visible=false;p.add(medal);
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
 function sledHeight(x,z){return routeHeight(x,z)+.46}
-function startSledApproach(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;sledState='approach';sledApproachStage=0;fastWalk=false;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');sighStatus.textContent='썰매장으로 이동 중…';snapCamera=true}
-function moveTowardSled(target,dt,speed){const dx=target.x-p.position.x,dz=target.z-p.position.z,distance=Math.hypot(dx,dz);if(distance<.12){p.position.x=target.x;p.position.z=target.z;return true}const step=Math.min(distance,speed*dt);p.position.x+=dx/distance*step;p.position.z+=dz/distance*step;p.rotation.y=Math.atan2(dx,dz);return false}
+function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
 function beginSledRide(){sledState='riding';sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sighStatus.textContent='방향키 또는 조이스틱으로 조향해요';snapCamera=true}
 function finishSledRide(now){sledState='finish';sled.visible=false;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;sighStatus.textContent='완주!';snapCamera=true}
 function updateSled(now,dt){
  if(sledState==='idle')return;
- if(sledState==='approach'){
-  const target=sledApproachStage===0?sledCourse.entry:sledApproachStage===1?{x:-45.5,z:48.45}:sledCourse.start;
-  const reached=moveTowardSled(target,dt,sledApproachStage===1?MOVING_WALK_SPEED:8.6);
-  p.position.y=surfaceHeight(p.position.x,p.position.z)+.07;p.userData.groundY=p.position.y;walking=true;
-  if(reached){sledApproachStage++;if(sledApproachStage>2)beginSledRide()}
-  return;
- }
  if(sledState==='riding'){
   const keyboard=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
   const desired=mobileControls?mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
@@ -200,7 +192,7 @@ function applySledPose(now){
  if(sledState==='riding'){part.leg0.rotation.x=part.leg1.rotation.x=-1.12;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
  if(sledState==='finish'){const wave=Math.sin(now*.012)*.62;part.arm0.rotation.z=.7+wave;part.arm1.rotation.z=-.7-wave;part.arm0.rotation.x=-.38;part.arm1.rotation.x=-.38;medal.rotation.y=Math.sin(now*.004)*.08}
 }
-sledButton.addEventListener('click',startSledApproach);
+sledButton.addEventListener('click',startSledRide);
 renderer.domElement.addEventListener('pointerdown',event=>{sledPress=[event.clientX,event.clientY]});
 renderer.domElement.addEventListener('pointerup',event=>{if(!canEnterAction('sled')||sledState!=='idle'||!sledPress||Math.hypot(event.clientX-sledPress[0],event.clientY-sledPress[1])>8)return;const rect=renderer.domElement.getBoundingClientRect();sledPointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);sledRay.setFromCamera(sledPointer,camera);const snowHit=sledSlope&&sledRay.intersectObject(sledSlope)[0];if(!snowHit){sledButton.hidden=true;return}if(surfaceHeight(p.position.x,p.position.z)<ROUTES.upper-1){sledButton.hidden=true;multiplayer.toast('썰매는 언덕 위로 이동하세요!');return}sledButton.hidden=false});
 const campusSpawnSlots=Object.freeze([{x:0,z:8},{x:-2.6,z:8},{x:2.6,z:8},{x:0,z:10.6},{x:-2.6,z:10.6},{x:2.6,z:10.6}]);
@@ -495,7 +487,7 @@ addEventListener('resize',resize);resize();
  if(sighMode){turn=0;drive=0;faceView=true}
  const controlling=Math.abs(turn)+Math.abs(drive)>.12;
  if(controlling){if(faceView){faceView=false;snapCamera=true;faceButton.textContent='얼굴 보기'}p.rotation.y+=turn*dt*2.5;help.style.opacity=0}
- walking=sledState==='approach'||(!sledActive&&Math.abs(drive)>.12);
+ walking=!sledActive&&Math.abs(drive)>.12;
  forward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));
  if(walking){move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=dt*10}
  else {if(!sledActive&&!skyMode&&onMovingWalk(p.position.x,p.position.z))move(0,0,dt);time+=dt*2}
