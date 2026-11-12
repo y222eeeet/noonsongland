@@ -103,6 +103,7 @@ export function createSongi() {
   }
   const smile=new T.CatmullRomCurve3([new T.Vector3(-.27,.035,0),new T.Vector3(-.16,-.07,0),new T.Vector3(0,-.10,0),new T.Vector3(.16,-.07,0),new T.Vector3(.27,.035,0)]);
   parts.mouth=mesh(new T.TubeGeometry(smile,20,.032,8,false),purple,[0,2.65,.70]);
+  const headMeshes=root.children.slice();
   parts.body=mesh(new T.CylinderGeometry(.49,.84,1.10,16,1),lavender,[0,1.65,0]);
   const hem=mesh(new T.TorusGeometry(.78,.065,4,24),lavender,[0,1.10,0]);hem.rotation.x=Math.PI/2;
   for(let i=0;i<2;i++) {
@@ -184,6 +185,11 @@ export function createSongi() {
     attr.needsUpdate=true;feature.geometry.computeVertexNormals();
     feature.geometry.computeBoundingSphere();
   }
+  const headPivot=new T.Group();
+  headPivot.position.y=2.55;
+  root.add(headPivot);
+  for(const feature of [...headMeshes,...breathFeatures])headPivot.attach(feature);
+  parts.headPivot=headPivot;
   root.userData.parts=parts;
   const sleepBubbles=new T.Group();sleepBubbles.name='sleep-bubbles';root.add(sleepBubbles);sleepBubbles.visible=false;
   for(let i=0;i<5;i++){
@@ -217,7 +223,12 @@ export function createSongi() {
     faceMaterial.color.lerp(targetFace,1-Math.exp(-dt*5));
     const inhale=state==='inhale',exhale=state==='exhale';
     const cycle=elapsed%4.8,blinking=!inhale&&!exhale&&!sleeping&&cycle>4.42&&cycle<4.70;
-    const faceState=sleeping?'sleep':inhale?'inhale':exhale?'exhale':blinking?'blink':'normal';
+    const drinking=state==='drink',dizzy=state==='drink-dizzy';
+    const gulp=heldSeconds%1;
+    const nod=drinking&&heldSeconds>=1&&gulp<.5?Math.sin(Math.PI*gulp/.5)**2:0;
+    parts.headPivot.rotation.x=drinking?-.14-.065*nod:0;
+    parts.headPivot.rotation.z=dizzy?Math.sin(elapsed*7)*.14:0;
+    const faceState=sleeping?'sleep':inhale||drinking?'inhale':exhale||dizzy?'exhale':blinking?'blink':'normal';
     setFaceState(faceState);
     // Reset the base eye scale every frame; blink uses its own closed-eye
     // layer, so an open and closed eye can never be rendered together.
