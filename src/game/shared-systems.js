@@ -12,7 +12,7 @@ export const PLAYER_MODE=Object.freeze({
 // before it can expose a button, so entering a new mode cannot accidentally
 // leave controls from the previous mode active.
 export const MODE_RULES=Object.freeze({
- [PLAYER_MODE.IDLE]:Object.freeze({movement:'free',camera:'follow',entryActions:Object.freeze(['face','fast','sigh','smoke','seat','swim','sky','guestbook','sled','store','classroom'])}),
+ [PLAYER_MODE.IDLE]:Object.freeze({movement:'free',camera:'follow',entryActions:Object.freeze(['face','fast','sigh','smoke','drink','seat','swim','sky','guestbook','sled','store','classroom'])}),
  [PLAYER_MODE.SEATED]:Object.freeze({movement:'locked',camera:'seat',entryActions:Object.freeze(['smoke','drink'])}),
  [PLAYER_MODE.GUESTBOOK]:Object.freeze({movement:'locked',camera:'follow',entryActions:Object.freeze([])}),
  [PLAYER_MODE.SIGH]:Object.freeze({movement:'locked',camera:'face',entryActions:Object.freeze([])}),
