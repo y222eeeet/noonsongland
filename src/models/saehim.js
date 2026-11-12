@@ -50,5 +50,5 @@ export function addSaehimAndRoutes(scene,obstacles,M){
  // beneath it, so clicking the snow can never select a nearby building.
  sledSlope.name='sled-slope';sledSlope.userData.sledSlope=true;
  slope(ROUTES.ramp,M.path);
- return {minX:-101,maxX:47,minZ:-70,maxZ:ROUTES.ramp.z1+2};
+ return {minX:-101,maxX:47,minZ:-70,maxZ:Math.max(ROUTES.ramp.z1,ROUTES.sledHill.z1)+2};
 }

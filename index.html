@@ -169,14 +169,15 @@ const sledButton=document.createElement('button');sledButton.type='button';sledB
 // celebration happens on the free, green lower lawn, never in a blocked tile.
 // Steering bounds come from the snowfield itself.  This keeps the full expanded
 // field usable and leaves only a sled-width safety margin at its outer edges.
-const sledEdgeInset=2.05,sledCourse=Object.freeze({start:{x:-45.1,z:42.25},finish:{x:.25,z:42.25},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
+const sledStartZ=ROUTES.sledHill.z1-3.75;
+const sledEdgeInset=2.05,sledCourse=Object.freeze({start:{x:-45.1,z:sledStartZ},finish:{x:.25,z:sledStartZ},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
 const sledLyrics=Object.freeze(['흰 눈 사이로~','썰매를 타고~','달리는 기분~','상쾌도 하다~']);
 let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0,sledLyricIndex=-1;
 const sled=createSled();
 sled.visible=false;
 scene.add(sled);
 const summitSled=sled.clone();
-placeSled(summitSled,-45.1,43.85,Math.PI/2);
+placeSled(summitSled,sledCourse.start.x,sledStartZ+1.6,Math.PI/2);
 scene.add(summitSled);
 const sledSeatOffset=new T.Vector3();
 function positionSledRider(x,z,yaw){
