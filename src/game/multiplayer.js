@@ -76,7 +76,15 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   };
   peer.applyPose=applyPose;peers.set(id,peer);return peer
  }
- function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='bold 44px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=12;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#5f5473';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.center.set(.5,0);sprite.position.y=5.45;sprite.scale.set(4.8,1.2,1);return sprite}
+ const MOBILE_NAME_LABEL_HEIGHT_PX=22,DESKTOP_NAME_LABEL_HEIGHT_PX=33,NAME_LABEL_ASPECT=4;
+ function label(name){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='900 88px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=14;ctx.strokeStyle='#fffaf4';ctx.strokeText(name,384,96);ctx.fillStyle='#55406f';ctx.fillText(name,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const material=new T.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false});const sprite=new T.Sprite(material);sprite.renderOrder=10000;sprite.center.set(.5,0);sprite.position.y=5.45;sprite.scale.set(4.8,1.2,1);return sprite}
+ function keepNameLabelSize(sprite,anchor){
+  if(!sprite||!camera?.isPerspectiveCamera||!renderer)return;
+  const viewportHeight=Math.max(1,renderer.domElement.clientHeight),distance=Math.max(.1,camera.position.distanceTo(anchor));
+  const labelHeight=matchMedia('(hover:hover) and (pointer:fine)').matches?DESKTOP_NAME_LABEL_HEIGHT_PX:MOBILE_NAME_LABEL_HEIGHT_PX;
+  const worldHeight=2*Math.tan(T.MathUtils.degToRad(camera.getEffectiveFOV())/2)*distance/viewportHeight*labelHeight;
+  sprite.scale.set(worldHeight*NAME_LABEL_ASPECT,worldHeight,1);
+ }
  function matchTag(text,fill){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=192;const ctx=canvas.getContext('2d');ctx.font='800 48px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=13;ctx.strokeStyle='#fffaf4';ctx.strokeText(text,384,96);ctx.fillStyle=fill;ctx.fillText(text,384,96);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;const sprite=new T.Sprite(new T.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.center.set(.5,1);sprite.position.y=.42;sprite.scale.set(3.9,.98,1);return sprite}
  function disposeTag(parent,tag){if(!tag)return;parent.remove(tag);tag.material.map.dispose();tag.material.dispose()}
  function clearMatchTags(){disposeTag(localAvatar,localMatchTag);const peer=taggedPartnerId&&peers.get(taggedPartnerId);if(peer)disposeTag(peer.mesh,remoteMatchTag);localMatchTag=remoteMatchTag=undefined;taggedPartnerId=undefined;if(ownLabel)ownLabel.visible=true}
@@ -111,7 +119,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   // The shared channel keeps currently-open production clients compatible.
   // Realm filtering below still ensures campus and sky avatars never render
   // into each other's world.
-  if(ownLabel){ownLabel.scale.set(4.8,1.2,1);ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45}
+  if(ownLabel){ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45;keepNameLabelSize(ownLabel,ownLabel.position)}
   if(matdam&&!state.smoking){if(!endSent){endSent=true;void sendTargeted('matdam-end',matdam.partnerId)}endMatdamView();localAvatar.visible=true}
   if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
   updateMatchTags();

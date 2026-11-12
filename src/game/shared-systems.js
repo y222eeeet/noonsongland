@@ -43,8 +43,8 @@ export const MODE_UI_RULES=Object.freeze({
  [PLAYER_MODE.SMOKE]:controls({smoke:true,smokeAction:true,smokeExitSlot:0}),
  [PLAYER_MODE.SEATED_SMOKE]:controls({smoke:true,smokeAction:true,smokeExitSlot:0}),
  [PLAYER_MODE.GUESTBOOK]:commonControls,[PLAYER_MODE.SIGH]:controls({sigh:true,sighExitSlot:0}),[PLAYER_MODE.SWIM]:commonControls,
- [PLAYER_MODE.SKY]:commonControls,[PLAYER_MODE.SKY_REST]:commonControls,
- [PLAYER_MODE.SLED]:commonControls,[PLAYER_MODE.DRINK]:controls({chug:true,chugExitSlot:0}),[PLAYER_MODE.POCHA]:commonControls,
+ [PLAYER_MODE.SKY]:controls({joystick:true}),[PLAYER_MODE.SKY_REST]:commonControls,
+ [PLAYER_MODE.SLED]:controls({joystick:true}),[PLAYER_MODE.DRINK]:controls({chug:true,chugExitSlot:0}),[PLAYER_MODE.POCHA]:commonControls,
  [PLAYER_MODE.CLASSROOM]:controls({joystick:true}),[PLAYER_MODE.CLASSROOM_BREAK]:commonControls
 });
 export function getModeUiRule(mode){return MODE_UI_RULES[mode]||commonControls}

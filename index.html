@@ -29,7 +29,7 @@ import { addCampusPond } from './src/models/campus-pond.js';
 import { addGroundWayfinding } from './src/models/ground-wayfinding.js';
 import { insidePond, onStoneBridge } from './src/game/pond-layout.js';
 import { orbitFrame, chooseOrbitAngle } from './src/game/swim-orbit.js';
-import { ROUTES, inRect, onMovingWalk, MOVING_WALK_SPEED } from './src/game/campus-routes-layout.js';
+import { ROUTES, inRect, onMovingWalk, MOVING_WALK_SPEED, routeHeight } from './src/game/campus-routes-layout.js';
 import { canEnterActivity, getModeUiRule } from './src/game/shared-systems.js';
 function prepareExhale(group,seconds){const amount=Math.max(0,Math.min(1,seconds/20));if(group.children.length===4){const template=group.children[0];for(let i=4;i<16;i++){const puff=template.clone();puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2);group.add(puff)}}const profile={count:4+Math.round(amount*12),scale:1+amount*.85,opacity:.42+amount*.22};group.userData.exhale=profile;group.children.forEach((puff,i)=>puff.visible=i<profile.count);return profile}
 function prepareSmokeExhale(group,seconds){const amount=Math.min(1,Math.max(0,seconds/6));while(group.children.length<24)group.add(group.children[0].clone());const count=3+Math.round(amount*21),emission=.15+amount*1.8;group.children.forEach((puff,i)=>{if(!puff.userData.ownSmokeMaterial){puff.material=puff.material.clone();puff.userData.ownSmokeMaterial=true}puff.visible=false;puff.userData.delay=i/(count-1)*emission});group.userData.exhale={count,emission,duration:emission+1.6,radius:.16+amount*.22};return group.userData.exhale}
@@ -52,7 +52,7 @@ help.remove();
 document.querySelector('#name').style.display='none';
 sighButton.addEventListener('click',()=>clearTimeout(sighExitTimer));
 inhaleButton.addEventListener('pointerdown',()=>{clearTimeout(sighExitTimer);const cycle=++inhaleCycle;setTimeout(()=>{if(inhaling&&cycle===inhaleCycle)inhaleStart-=10000},10000)});
-const fastButton=document.createElement('button');fastButton.type='button';fastButton.textContent='빠르게 걷기 ×1';fastButton.style.cssText="position:absolute;z-index:3;top:max(110px,calc(env(safe-area-inset-top) + 92px));right:14px;padding:8px 10px;border:1px solid #ffffffbb;border-radius:999px;background:#ffffffb8;color:#5f5473;font:700 11px ui-rounded,'Apple SD Gothic Neo',sans-serif";game.append(fastButton);let fastWalk=false;fastButton.addEventListener('click',()=>{if(!canEnterAction('fast'))return;fastWalk=!fastWalk;fastButton.textContent=fastWalk?'빠르게 걷기 ×2':'빠르게 걷기 ×1';fastButton.style.background=fastWalk?'#dcc7f2':'#ffffffb8'});
+const fastButton=document.createElement('button');fastButton.type='button';fastButton.textContent='빠르게 걷기 ×1';fastButton.style.cssText="position:absolute;z-index:3;top:max(110px,calc(env(safe-area-inset-top) + 92px));right:14px;padding:8px 10px;border:1px solid #ffffffbb;border-radius:999px;background:#ffffffb8;color:#5f5473;font:700 11px ui-rounded,'Apple SD Gothic Neo',sans-serif";game.append(fastButton);let fastWalk=false;function setFastWalk(active){fastWalk=Boolean(active);fastButton.textContent=fastWalk?'빠르게 걷기 ×2':'빠르게 걷기 ×1';fastButton.style.background=fastWalk?'#dcc7f2':'#ffffffb8'}fastButton.addEventListener('click',()=>{if(!canEnterAction('fast'))return;setFastWalk(!fastWalk)});
 fastButton.style.top='max(64px,calc(env(safe-area-inset-top) + 46px))';fastButton.style.left='14px';fastButton.style.right='auto';
 // World-wide counts are recorded only at a cigarette's first inhale. The
 // database exposes aggregates, never another Song-i's individual history.
@@ -143,6 +143,7 @@ scene.children.forEach(o=>{if(!beforeFurniture.has(o))o.position.y+=10.78;});
 q(new T.BoxGeometry(6,10.74,27),M.cream,[-67,5.23,3.5]);
 addCampusFurniture(scene,col,M);
 expandWorld(addSaehimAndRoutes(scene,col,M));
+const sledSlope=scene.getObjectByName('sled-slope');
 const updateMovingWalkArrows=addMovingWalkArrows(scene);
 extendSmokingBoundary(scene,col,M);
 const worldFloor=unifyWorldFloors(scene,M);
@@ -158,6 +159,48 @@ function surfaceHeight(x,z,realm){
 }
 // Continuous beveled Songi avatar, shared front and rear geometry.
 const p=createSongi();p.rotation.y=Math.PI;const startArea=new URLSearchParams(location.search).get('area');p.position.set(startArea==='guestbook'?-54:startArea==='myungshin'?-58:startArea==='jinri'?-51:0,0,startArea==='guestbook'?4:startArea==='myungshin'?4:startArea==='jinri'?-15:8);if(startArea==='guestbook')p.rotation.y=Math.PI/2;scene.add(p);const part=p.userData.parts;
+// Sledding is one committed run: from the upper deck, selecting the snow
+// immediately places Song-i on the start line, then rides to the finish.
+const sledButton=document.createElement('button');sledButton.type='button';sledButton.hidden=true;sledButton.textContent='썰매타기';sledButton.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#83b7d8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #456f8a44";game.append(sledButton);
+// The finish is deliberately beyond both the snow and registered hill route:
+// celebration happens on the free, green lower lawn, never in a blocked tile.
+// Steering bounds come from the snowfield itself.  This keeps the full expanded
+// field usable and leaves only a sled-width safety margin at its outer edges.
+const sledEdgeInset=.55,sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
+let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0;
+const sled=new T.Group(),sledWood=new T.MeshStandardMaterial({color:'#b9835f',roughness:.76}),sledTrim=new T.MeshStandardMaterial({color:'#f8e9d5',roughness:.68});
+function sledPiece(geometry,material,x,y,z,rotation=0){const piece=new T.Mesh(geometry,material);piece.position.set(x,y,z);piece.rotation.z=rotation;sled.add(piece);return piece}
+[-.43,.43].forEach(z=>{sledPiece(new T.BoxGeometry(1.85,.12,.12),sledWood,0,.13,z);sledPiece(new T.CylinderGeometry(.065,.065,1.9,10),sledTrim,.12,.02,z,Math.PI/2)});sledPiece(new T.BoxGeometry(.9,.16,.78),sledWood,-.18,.35,0);sledPiece(new T.BoxGeometry(.12,.55,.78),sledWood,-.72,.62,0,-.36);sled.visible=false;scene.add(sled);
+const summitSled=sled.clone();summitSled.position.set(-45.15,routeHeight(-45.15,44.65)+.08,44.65);summitSled.rotation.y=Math.PI/2;scene.add(summitSled);
+const medal=new T.Group(),medalRibbon=new T.MeshStandardMaterial({color:'#8f7ac2',roughness:.7}),medalGold=new T.MeshStandardMaterial({color:'#f4cd58',roughness:.42,metalness:.18});
+const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRight=ribbonLeft.clone(),medalDisk=new T.Mesh(new T.CylinderGeometry(.22,.22,.07,20),medalGold);ribbonLeft.position.set(-.11,2.40,.75);ribbonLeft.rotation.z=.28;ribbonRight.position.set(.11,2.40,.75);ribbonRight.rotation.z=-.28;medalDisk.position.set(0,2.12,.80);medalDisk.rotation.x=Math.PI/2;medal.add(ribbonLeft,ribbonRight,medalDisk);medal.visible=false;p.add(medal);
+const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
+function sledHeight(x,z){return routeHeight(x,z)+.46}
+function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
+function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sighStatus.textContent='좌우로만 조향해요';snapCamera=true}
+function finishSledRide(now){sledState='finish';sled.visible=false;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;sighStatus.textContent='완주!';snapCamera=true}
+function updateSled(now,dt){
+ if(sledState==='idle')return;
+ if(sledState==='riding'){
+  // Sled steering deliberately uses one horizontal axis only.  Its sign is
+  // reversed from walking controls so the camera-facing left/right feel right.
+  const keyboard=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
+  const desired=mobileControls?-mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
+  p.position.x+=sledCourse.speed*dt;p.position.z=T.MathUtils.clamp(p.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
+  p.position.y=sledHeight(p.position.x,p.position.z);p.rotation.set(0,Math.atan2(sledCourse.speed,sledSteer*4.0),0);p.userData.groundY=p.position.y-.46;
+  sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sled.rotation.z=-sledSteer*.10;walking=false;
+  if(p.position.x>=sledCourse.finish.x)finishSledRide(now);
+  return;
+ }
+ if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
+}
+function applySledPose(now){
+ if(sledState==='riding'){part.leg0.rotation.x=part.leg1.rotation.x=-1.12;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
+ if(sledState==='finish'){const wave=Math.sin(now*.012)*.62;part.arm0.rotation.z=.7+wave;part.arm1.rotation.z=-.7-wave;part.arm0.rotation.x=-.38;part.arm1.rotation.x=-.38;medal.rotation.y=Math.sin(now*.004)*.08}
+}
+sledButton.addEventListener('click',startSledRide);
+renderer.domElement.addEventListener('pointerdown',event=>{sledPress=[event.clientX,event.clientY]});
+renderer.domElement.addEventListener('pointerup',event=>{if(!canEnterAction('sled')||sledState!=='idle'||!sledPress||Math.hypot(event.clientX-sledPress[0],event.clientY-sledPress[1])>8)return;const rect=renderer.domElement.getBoundingClientRect();sledPointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);sledRay.setFromCamera(sledPointer,camera);const snowHit=sledSlope&&sledRay.intersectObject(sledSlope)[0];if(!snowHit){sledButton.hidden=true;return}if(surfaceHeight(p.position.x,p.position.z)<ROUTES.upper-1){sledButton.hidden=true;multiplayer.toast('썰매는 언덕 위로 이동하세요!');return}sledButton.hidden=false});
 const campusSpawnSlots=Object.freeze([{x:0,z:8},{x:-2.6,z:8},{x:2.6,z:8},{x:0,z:10.6},{x:-2.6,z:10.6},{x:2.6,z:10.6}]);
 function resolveCampusSpawn(states){if(startArea)return false;const occupied=states.filter(state=>state?.realm!=='sky'&&Number.isFinite(state?.x)&&Number.isFinite(state?.z));const slot=campusSpawnSlots.find(candidate=>!occupied.some(state=>Math.hypot(state.x-candidate.x,state.z-candidate.z)<1.7)&&!hit(candidate.x,candidate.z));if(!slot)return false;p.position.set(slot.x,surfaceHeight(slot.x,slot.z)+.07,slot.z);p.userData.groundY=p.position.y;return true}
 window.clearSpawnSmokeOverlap=()=>{if(Math.hypot(p.position.x,p.position.z-8)>.9)return;const rightX=-Math.cos(p.rotation.y),rightZ=Math.sin(p.rotation.y),distance=1.35,targetX=p.position.x+rightX*distance,targetZ=p.position.z+rightZ*distance;if(!hit(targetX,targetZ)){p.position.x=targetX;p.position.z=targetZ;p.userData.groundY=surfaceHeight(targetX,targetZ)+.07}};
@@ -165,6 +208,9 @@ const swimButton=document.createElement('button'),swimExitButton=document.create
 [swimButton,swimExitButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#6aaeb8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #28515c44";game.append(button)});
 swimButton.textContent='입수하기';swimExitButton.textContent='나오기';
 swimExitButton.dataset.defaultStyle=swimExitButton.style.cssText;
+// The pond is entered only from the ground-level bank. From the upper
+// courtyard it stays scenery, so it cannot compete with the sled slope.
+const canEnterPondFromHere=()=>!skyMode&&surfaceHeight(p.position.x,p.position.z)<2;
 function setSwimUi(active){swimButton.hidden=true;swimExitButton.hidden=!active;if(active){placeExitControl(swimExitButton);faceButton.hidden=sighButton.hidden=smokeButton.hidden=fastButton.hidden=joy.hidden=true;joyV.x=joyV.z=0}else{restoreControl(swimExitButton);if(!skyMode&&!sittingBench&&!smokeMode){faceButton.hidden=sighButton.hidden=smokeButton.hidden=fastButton.hidden=joy.hidden=false}}}
 function findSwimExit(x,z){
  // Walk outward from the water in small rings.  Only a registered, walkable
@@ -176,17 +222,31 @@ function findSwimExit(x,z){
  }
  return {x:0,z:8};
 }
-function enterSwim(){if(!swimPoint||!canEnterAction('swim'))return;clearEntryActions();const swimmers=multiplayer?.activeSwimmers?.()||[];swimming=true;swimDiveStarted=performance.now();swimEnteredAt=Date.now();swimOrbitAngle=chooseOrbitAngle(swimmers,swimEnteredAt);swimDirection=1;const frame=orbitFrame({swimEnteredAt,swimOrbitAngle,swimDirection},swimEnteredAt);swimOrientation=frame.roll;p.position.set(frame.x,.18,frame.z);p.userData.groundY=-.12;setSwimUi(true);snapCamera=true;multiplayer?.flush?.()}
+function enterSwim(){if(!swimPoint||!canEnterAction('swim')||!canEnterPondFromHere()){swimButton.hidden=true;swimPoint=null;return}clearEntryActions();const swimmers=multiplayer?.activeSwimmers?.()||[];swimming=true;swimDiveStarted=performance.now();swimEnteredAt=Date.now();swimOrbitAngle=chooseOrbitAngle(swimmers,swimEnteredAt);swimDirection=1;const frame=orbitFrame({swimEnteredAt,swimOrbitAngle,swimDirection},swimEnteredAt);swimOrientation=frame.roll;p.position.set(frame.x,.18,frame.z);p.userData.groundY=-.12;setSwimUi(true);snapCamera=true;multiplayer?.flush?.()}
 function leaveSwim(){if(!swimming)return;const exit=findSwimExit(p.position.x,p.position.z);swimming=false;swimEnteredAt=0;p.position.set(exit.x,surfaceHeight(exit.x,exit.z)+.07,exit.z);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSwimUi(false);snapCamera=true;multiplayer?.flush?.()}
 swimButton.addEventListener('click',enterSwim);swimExitButton.addEventListener('click',leaveSwim);
 const swimRay=new T.Raycaster(),swimPointer=new T.Vector2();let swimPress=null;
 renderer.domElement.addEventListener('pointerdown',event=>{swimPress=[event.clientX,event.clientY]});
-renderer.domElement.addEventListener('pointerup',event=>{if(!canEnterAction('swim')||!swimPress||Math.hypot(event.clientX-swimPress[0],event.clientY-swimPress[1])>8)return;const rect=renderer.domElement.getBoundingClientRect();swimPointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);swimRay.setFromCamera(swimPointer,camera);const hit=swimRay.intersectObject(campusPond.water)[0];if(!hit||onStoneBridge(hit.point.x,hit.point.z)){swimButton.hidden=true;swimPoint=null;return}swimPoint={x:hit.point.x,z:hit.point.z};swimButton.hidden=false});
+renderer.domElement.addEventListener('pointerup',event=>{if(!canEnterAction('swim')||!canEnterPondFromHere()||!swimPress||Math.hypot(event.clientX-swimPress[0],event.clientY-swimPress[1])>8){if(!canEnterPondFromHere()){swimButton.hidden=true;swimPoint=null}return}const rect=renderer.domElement.getBoundingClientRect();swimPointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);swimRay.setFromCamera(swimPointer,camera);const hit=swimRay.intersectObject(campusPond.water)[0];if(!hit||onStoneBridge(hit.point.x,hit.point.z)){swimButton.hidden=true;swimPoint=null;return}swimPoint={x:hit.point.x,z:hit.point.z};swimButton.hidden=false});
 const portalButton=document.createElement('button'),skyReturnButton=document.createElement('button'),skySleepButton=document.createElement('button'),skyRollButton=document.createElement('button');
 [portalButton,skyReturnButton,skySleepButton,skyRollButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:8;padding:10px 14px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 13px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 7px 18px #392e4444";game.append(button)});
 portalButton.textContent='하늘나라 가기';portalButton.style.cssText+=';left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%)';skyReturnButton.textContent='캠퍼스로 돌아가기';skyReturnButton.style.cssText+=';top:max(18px,env(safe-area-inset-top));left:14px';skySleepButton.textContent='구름침대에서 자기';skySleepButton.style.cssText+=';right:14px;top:max(64px,calc(env(safe-area-inset-top) + 46px))';skyRollButton.textContent='뒹굴뒹굴';skyRollButton.style.cssText+=';right:14px;top:max(110px,calc(env(safe-area-inset-top) + 92px))';
 let skyMode=false,skyPose='idle';const portalRay=new T.Raycaster(),portalPointer=new T.Vector2();
-function setSkyUi(active){skyReturnButton.hidden=skySleepButton.hidden=skyRollButton.hidden=!active;faceButton.hidden=sighButton.hidden=smokeButton.hidden=fastButton.hidden=active;portalButton.hidden=true}
+function syncSkyModeControls(){
+ const resting=skyMode&&skyPose!=='idle';
+ // Sky actions are layered over the shared mode policy.  This keeps every
+ // campus action (including newly added ones such as bottle chugging) out of
+ // both the free-roam and resting sky states.
+ applyModeControls(resting?'sky-rest':'sky');
+ inhaleButton.hidden=true;smokeInhaleButton.hidden=true;chugInhaleButton.hidden=true;
+ skyReturnButton.hidden=!skyMode;skyReturnButton.textContent=resting?'일어나기':'캠퍼스로 돌아가기';skyReturnButton.disabled=bedMotion?.active||false;
+ skySleepButton.hidden=!skyMode||resting;skyRollButton.hidden=!skyMode||resting;
+}
+function setSkyUi(active){
+ portalButton.hidden=true;
+ if(!active){skyReturnButton.hidden=skySleepButton.hidden=skyRollButton.hidden=true;applyModeControls('idle');return}
+ syncSkyModeControls();
+}
 function setSkyRenderMode(active){renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,active?1.2:1.5));syncViewport()}
 function enterSkyRealm(){if(!canEnterAction('sky'))return;clearEntryActions();skyMode=true;skyPose='idle';setSkyRenderMode(true);skyRealm.enter();p.position.set(0,skyRealm.floorY,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=skyRealm.floorY;setSkyUi(true);snapCamera=true}
 function leaveSkyRealm(){skyMode=false;skyPose='idle';setSkyRenderMode(false);skyRealm.leave();p.position.set(0,surfaceHeight(0,8)+.07,8);p.rotation.set(0,Math.PI,0);p.userData.groundY=p.position.y;setSkyUi(false);snapCamera=true}
@@ -198,7 +258,7 @@ const bedMotion=createBedMotion(p,skyRealm.floorY,pose=>{skyPose=pose;if(pose===
 const skyToast=document.createElement('div');skyToast.hidden=true;skyToast.style.cssText="position:absolute;z-index:14;left:50%;bottom:max(92px,calc(env(safe-area-inset-bottom) + 68px));transform:translateX(-50%);padding:11px 15px;border-radius:999px;background:#55515bcc;color:#fff;font:700 13px ui-rounded,'Apple SD Gothic Neo',sans-serif;white-space:nowrap;pointer-events:none";game.append(skyToast);
 function showSkyToast(message){skyToast.textContent=message;skyToast.hidden=false;clearTimeout(skyToastTimer);skyToastTimer=setTimeout(()=>skyToast.hidden=true,2600)}
 function chooseCloudBed(event){if(!skyMode||skyPose!=='idle')return;event.stopImmediatePropagation();const order=skyRealm.bedOrder,occupied=multiplayer.occupiedSkyBeds(skyRealm.beds.length),index=order.find(candidate=>!occupied.has(candidate));if(index===undefined){showSkyToast('현재 모든 침대가 이용중이에요');return}const bed=skyRealm.beds[index];skyPose='transition';skyBedIndex=index;p.userData.skyBedIndex=index;bedMotion.enter(bed,performance.now());updateSkyPoseUi();multiplayer.flush();}
-function updateSkyPoseUi(){const resting=skyMode&&skyPose!=='idle';skyReturnButton.hidden=!skyMode;skyReturnButton.textContent=resting?'일어나기':'캠퍼스로 돌아가기';skyReturnButton.disabled=bedMotion.active;skySleepButton.hidden=!skyMode||resting;skyRollButton.hidden=!skyMode||resting;joy.hidden=resting;}
+function updateSkyPoseUi(){if(!skyMode)return;syncSkyModeControls();}
 skySleepButton.addEventListener('click',chooseCloudBed,true);skyRollButton.addEventListener('click',()=>{if(!skyMode||skyPose!=='idle')return;skyBedIndex=-1;p.userData.skyPose='roll';p.userData.skyBedIndex=-1;p.userData.skyRollStartedAt=Date.now()},true);
 skySleepButton.addEventListener('click',updateSkyPoseUi);skyRollButton.addEventListener('click',updateSkyPoseUi);skyRollButton.addEventListener('click',()=>multiplayer.flush());
 skyReturnButton.addEventListener('click',event=>{if(!skyMode||skyPose==='idle')return;event.stopImmediatePropagation();if(bedMotion.active)return;if(skyPose==='sleep'){skyPose='transition';bedMotion.leave(skyRealm.beds[skyBedIndex],performance.now());updateSkyPoseUi();multiplayer.flush();return}skyPose='idle';skyBedIndex=-1;p.userData.skyPose='idle';p.userData.skyBedIndex=-1;p.rotation.set(0,Math.PI,0);p.position.y=skyRealm.floorY;updateSkyPoseUi();snapCamera=true;multiplayer.flush();},true);
@@ -319,7 +379,7 @@ function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.v
 window.enterSongiSmoke=()=>{p.visible=false;smokePhase='idle';smokeBurn=new URLSearchParams(location.search).has('smokeTest')?.201:1;cigaretteFirstInhaleRecorded=false;smokeHandLift=0;smokeProp.userData.lastFrame=0;smokeInhaleButton.hidden=false;sighStatus.textContent=''};window.leaveSongiSmoke=()=>{p.visible=true;smokeProp.visible=false;smokeCloud.visible=false;smokePhase='idle';snapCamera=true;sighStatus.textContent=''};window.startSongiSmoke=()=>{if(!smokeMode||smokePhase==='exhale'||smokePhase==='reload')return;if(!cigaretteFirstInhaleRecorded){cigaretteFirstInhaleRecorded=true;recordFirstInhale()}smokePhase='inhale';smokeStarted=smokeLast=performance.now();sighStatus.textContent='흡입 중…'};window.finishSongiSmoke=()=>{if(!smokeMode||smokePhase!=='inhale')return;prepareSmokeExhale(smokeCloud,(performance.now()-smokeStarted)/1000);smokePhase='exhale';smokePuffStarted=performance.now();smokeOrigin.copy(p.position).addScaledVector(smokeForward,1.4);smokeOrigin.y+=2.5;smokeCloud.position.copy(smokeOrigin);smokeCloud.scale.setScalar(1);smokeMat.opacity=.48;smokeCloud.visible=true;smokeInhaleButton.hidden=true;sighStatus.textContent='후—'};
 function updateSwimming(now){if(!swimming)return;const elapsed=Math.min(1,(now-swimDiveStarted)/620),ease=elapsed*elapsed*(3-2*elapsed),frame=orbitFrame({swimEnteredAt,swimOrbitAngle,swimDirection},Date.now());swimOrientation=frame.roll;p.position.set(frame.x,.18-.38*ease,frame.z);p.rotation.set(-Math.PI/2*(.30+.70*ease),0,frame.roll);part.arm0.rotation.x=.34;part.arm1.rotation.x=-.34;part.leg0.rotation.x=.72;part.leg1.rotation.x=.72;}
 const renderFrame=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{const now=performance.now();campusPond.update(now/1000);updateSighBreath(now);updateSighScale(now);updateSmoking(now);updateChugging(now);updateSwimming(now);renderFrame(activeScene,activeCamera)};
-const mobileCameraForward=new T.Vector3(),mobileGameRender=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{if(mobileControls&&!faceView&&!smokeMode&&!chugMode&&!sittingBench&&skyPose!=='roll'){mobileCameraForward.set(Math.sin(mobileYaw),0,Math.cos(mobileYaw));activeCamera.position.copy(p.position).addScaledVector(mobileCameraForward,-17);activeCamera.position.y+=21;activeCamera.lookAt(p.position.x,p.position.y+6.2+mobilePitch*14,p.position.z)}mobileGameRender(activeScene,activeCamera)};
+const mobileCameraForward=new T.Vector3(),mobileGameRender=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{if(mobileControls&&sledState==='idle'&&!sledCameraReturnStarted&&!faceView&&!smokeMode&&!chugMode&&!sittingBench&&skyPose!=='roll'){mobileCameraForward.set(Math.sin(mobileYaw),0,Math.cos(mobileYaw));activeCamera.position.copy(p.position).addScaledVector(mobileCameraForward,-17);activeCamera.position.y+=21;activeCamera.lookAt(p.position.x,p.position.y+6.2+mobilePitch*14,p.position.z)}mobileGameRender(activeScene,activeCamera)};
 const rollCenter=new T.Vector3(),rollOffset=new T.Vector3(),rollCameraLook=new T.Vector3(),skyRender=renderer.render.bind(renderer);
 renderer.render=(activeScene,activeCamera)=>{
  skyRealm.update(Date.now());
@@ -344,7 +404,7 @@ function finishInhale(){if(!inhaling)return;const held=(performance.now()-inhale
 window.cancelSongiSigh=()=>{sighBreath.visible=false;breathStarted=-1;};
 window.finishSongiInhale=finishInhale;
 const keys={},joyV={x:0,z:0},mobileControls=matchMedia('(hover:none) and (pointer:coarse)').matches;let walking=false,time=0,angle=0,mobileYaw=p.rotation.y,mobilePitch=0,mobileMove={x:0,y:0};
-addEventListener('keydown',e=>{if(/Arrow|Key[WASD]/.test(e.code)){keys[e.code]=1;e.preventDefault()}});addEventListener('keyup',e=>keys[e.code]=0);
+addEventListener('keydown',e=>{if(!mobileControls&&(e.code==='ShiftLeft'||e.code==='ShiftRight')){if(!e.repeat&&canEnterAction('fast'))setFastWalk(!fastWalk);e.preventDefault();return}if(/Arrow|Key[WASD]/.test(e.code)){keys[e.code]=1;e.preventDefault()}});addEventListener('keyup',e=>keys[e.code]=0);
 function hit(x,z){
  if(skyMode)return Math.abs(x)>42||Math.abs(z)>28;
  if(!traversal.canStep(p.position.x,p.position.z,x,z,worldBounds))return 1;
@@ -357,16 +417,18 @@ function hit(x,z){
  })
 }
 function move(x,z,dt){
- if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return;
+ if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return false;
  if(smokeMode&&smokePhase==='inhale'||chugMode&&chugPhase==='drink')x=z=0;
  const riding=!skyMode&&onMovingWalk(p.position.x,p.position.z);
  const speed=fastWalk?2:1;
  const stepX=(riding?Math.min(0,x):x)*speed-(riding?MOVING_WALK_SPEED*dt:0);
  const stepZ=z*speed;
- if(stepX&&!hit(p.position.x+stepX,p.position.z))p.position.x+=stepX;
- if(stepZ&&!hit(p.position.x,p.position.z+stepZ))p.position.z+=stepZ;
+ let moved=false;
+ if(stepX&&!hit(p.position.x+stepX,p.position.z)){p.position.x+=stepX;moved=true}
+ if(stepZ&&!hit(p.position.x,p.position.z+stepZ)){p.position.z+=stepZ;moved=true}
+ return moved;
 }
-function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=(e.clientX-cx)/43,y=(e.clientY-cy)/43,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}if(mobileControls){mobileMove={x,y};joyV.x=0;joyV.z=-d;if(d>.08){const dx=-Math.cos(mobileYaw)*x-Math.sin(mobileYaw)*y,dz=Math.sin(mobileYaw)*x-Math.cos(mobileYaw)*y;p.rotation.y=Math.atan2(dx,dz)}}else{joyV.x=-x*.35;joyV.z=y}stick.style.transform=`translate(${x*27}px,${y*27}px)`}
+function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=(e.clientX-cx)/43,y=(e.clientY-cy)/43,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}if(mobileControls){if(sledState!=='idle'){mobileMove={x,y:0};joyV.x=joyV.z=0;stick.style.transform=`translate(${x*27}px,0px)`;return}mobileMove={x,y};joyV.x=0;joyV.z=-d;if(d>.08){const dx=-Math.cos(mobileYaw)*x-Math.sin(mobileYaw)*y,dz=Math.sin(mobileYaw)*x-Math.cos(mobileYaw)*y;p.rotation.y=Math.atan2(dx,dz)}}else{joyV.x=-x*.35;joyV.z=y}stick.style.transform=`translate(${x*27}px,${y*27}px)`}
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);joyMove(e)});joy.addEventListener('pointermove',e=>joy.hasPointerCapture(e.pointerId)&&joyMove(e));['pointerup','pointercancel'].forEach(e=>joy.addEventListener(e,()=>{joyV.x=joyV.z=0;mobileMove={x:0,y:0};stick.style.transform=''}));
 let cameraSwipe=null;renderer.domElement.addEventListener('pointerdown',e=>{if(mobileControls&&!sighMode)cameraSwipe={x:e.clientX,y:e.clientY}});renderer.domElement.addEventListener('pointermove',e=>{if(!cameraSwipe)return;const dx=e.clientX-cameraSwipe.x,dy=e.clientY-cameraSwipe.y;if(Math.abs(dx)>1||Math.abs(dy)>1){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.55,mobilePitch-dy*.006));cameraSwipe.x=e.clientX;cameraSwipe.y=e.clientY;if(smokeMode||chugMode)p.rotation.y=mobileYaw;faceView=false;snapCamera=true}});['pointerup','pointercancel'].forEach(type=>renderer.domElement.addEventListener(type,()=>cameraSwipe=null));
 // Fixed view toward Soonheongwan: Song-i stays small in the lower foreground.
@@ -377,16 +439,16 @@ const updateWorldShadows=()=>{};
 const updateDayNight=timestamp=>{if(!skyMode)applyDayNight(timestamp)};
 const layoutView=new URLSearchParams(location.search).get('view')==='layout';if(layoutView){game.style.width='100vw';game.style.height='100vh';game.style.borderRadius='0';scene.fog=null;camera.far=300;camera.updateProjectionMatrix();}
 let sittingBench=null,pendingBench=null,benchExit=null;
-currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
+currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(sledState!=='idle')return'sled';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
 canEnterAction=action=>canEnterActivity(currentActionMode(),action);
-clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;pendingBench=null;swimPoint=null;fastWalk=false;fastButton.textContent='빠르게 걷기 ×1';fastButton.style.background='#ffffffb8'};
+clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;setFastWalk(false)};
 const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
 sitButton.textContent='앉기';standButton.textContent='일어나기';
 faceButton.dataset.defaultStyle=faceButton.style.cssText;sighButton.dataset.defaultStyle=sighButton.style.cssText;smokeButton.dataset.defaultStyle=smokeButton.style.cssText;chugButton.dataset.defaultStyle=chugButton.style.cssText;standButton.dataset.defaultStyle=standButton.style.cssText;
 function applyModeControls(mode){const rule=getModeUiRule(mode);faceButton.hidden=!rule.face;sighButton.hidden=!rule.sigh;fastButton.hidden=!rule.fast;smokeButton.hidden=!rule.smoke;chugButton.hidden=!rule.chug;joy.hidden=!rule.joystick;standButton.hidden=!rule.stand;restoreControl(sighButton);restoreControl(smokeButton);restoreControl(chugButton);restoreControl(standButton);sighButton.textContent=rule.sighExitSlot!==null?'그만하기':'한숨';smokeButton.textContent=rule.smokeExitSlot!==null?'그만하기':'담타';chugButton.textContent=rule.chugExitSlot!==null?'그만하기':'병나발';if(rule.sighExitSlot!==null)placeExitControl(sighButton,rule.sighExitSlot);if(rule.smokeExitSlot!==null)placeExitControl(smokeButton,rule.smokeExitSlot);if(rule.chugExitSlot!==null)placeExitControl(chugButton,rule.chugExitSlot);if(rule.standExitSlot!==null)placeExitControl(standButton,rule.standExitSlot)}
-let appliedActivityUi='';function syncActivityUi(){const mode=currentActionMode();if(!['idle','sigh','smoke','seated','seated-smoke','drink'].includes(mode))return;const rule=getModeUiRule(mode);if(mode!==appliedActivityUi){applyModeControls(mode);appliedActivityUi=mode}inhaleButton.hidden=mode!=='sigh'||sighPhase==='exhale';smokeInhaleButton.hidden=!rule.smokeAction||smokePhase==='exhale'||smokePhase==='reload';chugInhaleButton.hidden=mode!=='drink'||chugPhase==='dizzy'}
+ let appliedActivityUi='';function syncActivityUi(){const mode=currentActionMode();if(!['idle','sigh','smoke','seated','seated-smoke','drink','sled'].includes(mode))return;const rule=getModeUiRule(mode);if(mode!==appliedActivityUi){applyModeControls(mode);appliedActivityUi=mode}inhaleButton.hidden=mode!=='sigh'||sighPhase==='exhale';smokeInhaleButton.hidden=!rule.smokeAction||smokePhase==='exhale'||smokePhase==='reload';chugInhaleButton.hidden=mode!=='drink'||chugPhase==='dizzy'}
 function setSeatUi(active){applyModeControls(active?(smokeMode?'seated-smoke':'seated'):(smokeMode?'smoke':'idle'))}
 window.refreshSongiSeatUi=()=>setSeatUi(Boolean(sittingBench));
 function standFromBench(){
@@ -420,10 +482,68 @@ window.startSongiMatdam=()=>{if(!smokeMode)smokeButton.click()};
 smokeButton.addEventListener('click',()=>multiplayer.flush());
 smokeInhaleButton.addEventListener('pointerdown',()=>multiplayer.flush());
 ['pointerup','pointercancel','lostpointercapture'].forEach(type=>addEventListener(type,()=>{if(smokeMode)multiplayer.flush()}));
-const cg=new T.Vector3(),lg=new T.Vector3(),forward=new T.Vector3(),clock=new T.Clock();camera.fov=50;camera.updateProjectionMatrix();function resize(){const r=game.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();(function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04),now=performance.now();if(!smokeMode&&!chugMode)p.visible=true;syncActivityUi();let turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0)+joyV.x,drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joyV.z;if(guestbook.isOpen()||sittingBench){turn=0;drive=0;}if(sighMode){turn=0;drive=0;faceView=true}const controlling=Math.abs(turn)+Math.abs(drive)>.12;if(controlling){if(faceView){faceView=false;snapCamera=true;faceButton.textContent='얼굴 보기'}p.rotation.y+=turn*dt*2.5;help.style.opacity=0}walking=Math.abs(drive)>.12;forward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));if(walking){move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=dt*10}else{
- if(!skyMode&&onMovingWalk(p.position.x,p.position.z))move(0,0,dt);
- time+=dt*2;
-}
-updateMovingWalkArrows(dt);const held=inhaling?(now-inhaleStart)/1000:0;if(inhaling){const stage=held>=20?3:held>=5?2:1;sighStatus.textContent=stage===3?'들이마시는 중… 3단계 · 오래 참았어요':stage===2?'들이마시는 중… 2단계 · 큰 한숨':'들이마시는 중… 1단계'}const exhale=Math.max(0,(exhaleUntil-now)/700),puff=inhaling?Math.min(held/20,.22):exhale*.22;p.scale.setScalar(1+puff);p.rotation.z=inhaling&&held>=20?Math.sin(time*38)*.028:0;const s=walking?Math.sin(time)*.7:Math.sin(time)*.04;part.arm0.rotation.x=s;part.arm1.rotation.x=-s;part.leg0.rotation.x=-s*.55;part.leg1.rotation.x=s*.55;const stepHeight=surfaceHeight(p.position.x,p.position.z)+.07;const oldHeight=p.userData.groundY??stepHeight;const rate=stepHeight>oldHeight?9:7;let smoothHeight=oldHeight+(stepHeight-oldHeight)*(1-Math.exp(-dt*rate));if(!walking||Math.abs(smoothHeight-stepHeight)<.003)smoothHeight=stepHeight;p.userData.groundY=smoothHeight;p.position.y=smoothHeight+(walking?Math.abs(Math.sin(time))*.035:0);cg.copy(p.position).addScaledVector(forward,faceView?9:-17);cg.y+=faceView?8:21;if(snapCamera){camera.position.copy(cg);snapCamera=false}else camera.position.lerp(cg,1-Math.exp(-dt*1.15));lg.copy(p.position);lg.y+=2.4;camera.lookAt(lg);clouds.forEach((c,i)=>{c.position.x+=dt*(.12+i*.03);if(c.position.x>18)c.position.x=-18});document.querySelector('#name').textContent=p.position.x<-62?'✦ 1캠퍼스 · 명신관 뒤편':p.position.x<-53?'✦ 1캠퍼스 · 명신관':p.position.x<-38?'✦ 1캠퍼스 · 후문':p.position.x<-19?'✦ 1캠퍼스 · 진리관':'✦ 1캠퍼스 · 순헌관';if(layoutView){camera.position.set(-29,120,-20);camera.up.set(0,0,-1);camera.lookAt(-29,10,-20);}p.userData.animate(clock.elapsedTime,sighPhase==='inhale'?'inhale':sighPhase==='exhale'?'exhale':'idle',held);multiplayer.update(dt,now);if(benchExit)updateBenchExit(now);else if(sittingBench)applyBenchPose(p,sittingBench.y);if(sittingBench&&!smokeMode){camera.position.copy(p.position).addScaledVector(forward,9);camera.position.y+=4.2;camera.lookAt(p.position.x,p.position.y+2.2,p.position.z)}updateDayNight(Date.now());updateWorldShadows(p.position);renderer.render(scene,camera);dismissLoading()})();
+const cg=new T.Vector3(),lg=new T.Vector3(),forward=new T.Vector3(),clock=new T.Clock();
+camera.fov=50;camera.updateProjectionMatrix();
+function resize(){const r=game.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+(function loop(){
+ requestAnimationFrame(loop);
+ const dt=Math.min(clock.getDelta(),.04),now=performance.now();
+ if(!smokeMode&&!chugMode)p.visible=true;
+ updateSled(now,dt);syncActivityUi();
+ const sledActive=sledState!=='idle';
+ let turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0)+joyV.x;
+ let drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joyV.z;
+ if(sledActive||guestbook.isOpen()||sittingBench){turn=0;drive=0;}
+ if(sighMode){turn=0;drive=0;faceView=true}
+ const controlling=Math.abs(turn)+Math.abs(drive)>.12;
+ if(controlling){if(faceView){faceView=false;snapCamera=true;faceButton.textContent='얼굴 보기'}p.rotation.y+=turn*dt*2.5;help.style.opacity=0}
+ // Input intent and locomotion are separate: animation/network state changes
+ // only after collision and mode rules actually moved Song-i this frame.
+ const wantsToWalk=!sledActive&&Math.abs(drive)>.12;
+ walking=false;
+ forward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));
+ if(wantsToWalk){walking=move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=walking?dt*10:dt*2}
+ else {if(!sledActive&&!skyMode&&onMovingWalk(p.position.x,p.position.z))move(0,0,dt);time+=dt*2}
+ updateMovingWalkArrows(dt);
+ const held=inhaling?(now-inhaleStart)/1000:0;
+ if(inhaling){const stage=held>=20?3:held>=5?2:1;sighStatus.textContent=stage===3?'들이마시는 중… 3단계 · 오래 참았어요':stage===2?'들이마시는 중… 2단계 · 큰 한숨':'들이마시는 중… 1단계'}
+ const exhale=Math.max(0,(exhaleUntil-now)/700),puff=inhaling?Math.min(held/20,.22):exhale*.22;
+ p.scale.setScalar(1+puff);p.rotation.z=inhaling&&held>=20?Math.sin(time*38)*.028:0;
+ const s=walking?Math.sin(time)*.7:Math.sin(time)*.04;
+ part.arm0.rotation.x=s;part.arm1.rotation.x=-s;part.leg0.rotation.x=-s*.55;part.leg1.rotation.x=s*.55;
+ if(!sledActive){
+  const stepHeight=surfaceHeight(p.position.x,p.position.z)+.07,oldHeight=p.userData.groundY??stepHeight,rate=stepHeight>oldHeight?9:7;
+  let smoothHeight=oldHeight+(stepHeight-oldHeight)*(1-Math.exp(-dt*rate));
+  if(!walking||Math.abs(smoothHeight-stepHeight)<.003)smoothHeight=stepHeight;
+  p.userData.groundY=smoothHeight;p.position.y=smoothHeight+(walking?Math.abs(Math.sin(time))*.035:0);
+ }
+ const sledReturnAge=sledCameraReturnStarted?Math.min(1,(now-sledCameraReturnStarted)/950):0;
+ const sledReturning=sledCameraReturnStarted>0&&sledReturnAge<1;
+ if(sledCameraReturnStarted&&sledReturnAge>=1)sledCameraReturnStarted=0;
+ cg.copy(p.position).addScaledVector(forward,faceView?9:-17);cg.y+=faceView?8:21;
+ if(sledActive){
+  // Ride and finish views stay in front of Song-i so the sled face and
+  // celebration are both visible to the rider.
+  cg.copy(p.position).addScaledVector(forward,12);cg.y+=6.4;lg.copy(p.position).setY(p.position.y+2.05);
+ }else if(sledReturning){
+  // Sweep around Song-i's left side instead of cutting directly from the
+  // front celebration view to the normal rear-follow camera.
+  const t=sledReturnAge*sledReturnAge*(3-2*sledReturnAge),radius=12+(17-12)*t;
+  const leftX=-forward.z,leftZ=forward.x,angle=Math.PI*t;
+  cg.copy(p.position).addScaledVector(forward,Math.cos(angle)*radius);cg.x+=leftX*Math.sin(angle)*radius;cg.z+=leftZ*Math.sin(angle)*radius;cg.y+=6.4+(21-6.4)*t;
+  lg.copy(p.position).setY(p.position.y+2.05+.35*t);
+ }else lg.copy(p.position).setY(p.position.y+2.4);
+ if(snapCamera){camera.position.copy(cg);snapCamera=false}else camera.position.lerp(cg,1-Math.exp(-dt*(sledActive||sledReturning?4.2:1.15)));
+ camera.lookAt(lg);
+ clouds.forEach((c,i)=>{c.position.x+=dt*(.12+i*.03);if(c.position.x>18)c.position.x=-18});
+ document.querySelector('#name').textContent=p.position.x<-62?'✦ 1캠퍼스 · 명신관 뒤편':p.position.x<-53?'✦ 1캠퍼스 · 명신관':p.position.x<-38?'✦ 1캠퍼스 · 후문':p.position.x<-19?'✦ 1캠퍼스 · 진리관':'✦ 1캠퍼스 · 순헌관';
+ if(layoutView){camera.position.set(-29,120,-20);camera.up.set(0,0,-1);camera.lookAt(-29,10,-20);}
+ p.userData.animate(clock.elapsedTime,sledState==='finish'?'win':sighPhase==='inhale'?'inhale':sighPhase==='exhale'?'exhale':'idle',held);
+ applySledPose(now);multiplayer.update(dt,now);
+ if(benchExit)updateBenchExit(now);else if(sittingBench)applyBenchPose(p,sittingBench.y);
+ if(sittingBench&&!smokeMode){camera.position.copy(p.position).addScaledVector(forward,9);camera.position.y+=4.2;camera.lookAt(p.position.x,p.position.y+2.2,p.position.z)}
+ updateDayNight(Date.now());updateWorldShadows(p.position);renderer.render(scene,camera);dismissLoading();
+})();
 }
 </script></main></body></html>

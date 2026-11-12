@@ -9,7 +9,7 @@ export const ROUTES={
  southCourtExtension:{x0:-76.5,x1:-70,z0:46,z1:51},
  // The new path joins the old snow slope along its south edge.
  ramp:{x0:-47,x1:2,z0:46,z1:51},
- sledHill:{x0:-47,x1:2,z0:38,z1:46},
+ sledHill:{x0:-47,x1:2,z0:32,z1:46},
  groundWalk:{x0:-2,x1:2,z0:18,z1:38},
  upper:10.78,lower:.05
 };
