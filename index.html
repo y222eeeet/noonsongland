@@ -413,14 +413,16 @@ function hit(x,z){
  })
 }
 function move(x,z,dt){
- if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return;
+ if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return false;
  if(smokeMode&&smokePhase==='inhale'||chugMode&&chugPhase==='drink')x=z=0;
  const riding=!skyMode&&onMovingWalk(p.position.x,p.position.z);
  const speed=fastWalk?2:1;
  const stepX=(riding?Math.min(0,x):x)*speed-(riding?MOVING_WALK_SPEED*dt:0);
  const stepZ=z*speed;
- if(stepX&&!hit(p.position.x+stepX,p.position.z))p.position.x+=stepX;
- if(stepZ&&!hit(p.position.x,p.position.z+stepZ))p.position.z+=stepZ;
+ let moved=false;
+ if(stepX&&!hit(p.position.x+stepX,p.position.z)){p.position.x+=stepX;moved=true}
+ if(stepZ&&!hit(p.position.x,p.position.z+stepZ)){p.position.z+=stepZ;moved=true}
+ return moved;
 }
 function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=(e.clientX-cx)/43,y=(e.clientY-cy)/43,d=Math.hypot(x,y);if(d>1){x/=d;y/=d}if(mobileControls){mobileMove={x,y};joyV.x=0;joyV.z=-d;if(d>.08){const dx=-Math.cos(mobileYaw)*x-Math.sin(mobileYaw)*y,dz=Math.sin(mobileYaw)*x-Math.cos(mobileYaw)*y;p.rotation.y=Math.atan2(dx,dz)}}else{joyV.x=-x*.35;joyV.z=y}stick.style.transform=`translate(${x*27}px,${y*27}px)`}
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);joyMove(e)});joy.addEventListener('pointermove',e=>joy.hasPointerCapture(e.pointerId)&&joyMove(e));['pointerup','pointercancel'].forEach(e=>joy.addEventListener(e,()=>{joyV.x=joyV.z=0;mobileMove={x:0,y:0};stick.style.transform=''}));
@@ -492,9 +494,12 @@ addEventListener('resize',resize);resize();
  if(sighMode){turn=0;drive=0;faceView=true}
  const controlling=Math.abs(turn)+Math.abs(drive)>.12;
  if(controlling){if(faceView){faceView=false;snapCamera=true;faceButton.textContent='얼굴 보기'}p.rotation.y+=turn*dt*2.5;help.style.opacity=0}
- walking=!sledActive&&Math.abs(drive)>.12;
+ // Input intent and locomotion are separate: animation/network state changes
+ // only after collision and mode rules actually moved Song-i this frame.
+ const wantsToWalk=!sledActive&&Math.abs(drive)>.12;
+ walking=false;
  forward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));
- if(walking){move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=dt*10}
+ if(wantsToWalk){walking=move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=walking?dt*10:dt*2}
  else {if(!sledActive&&!skyMode&&onMovingWalk(p.position.x,p.position.z))move(0,0,dt);time+=dt*2}
  updateMovingWalkArrows(dt);
  const held=inhaling?(now-inhaleStart)/1000:0;
