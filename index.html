@@ -24,6 +24,8 @@ import { addJinriHall } from './src/models/jinri.js';
 import { addBronzeWomen } from './src/models/bronze-women.js';
 import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
+import { createSledParty } from './src/models/sled-party.js';
+import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider, resetSledClap } from './src/models/sled.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
@@ -167,22 +169,52 @@ const sledButton=document.createElement('button');sledButton.type='button';sledB
 // celebration happens on the free, green lower lawn, never in a blocked tile.
 // Steering bounds come from the snowfield itself.  This keeps the full expanded
 // field usable and leaves only a sled-width safety margin at its outer edges.
-const sledEdgeInset=.55,sledCourse=Object.freeze({start:{x:-45.5,z:42.25},finish:{x:1.65,z:42.25},exit:{x:4,z:29.5},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
+const sledStartZ=ROUTES.sledHill.z1-3.75;
+const sledEdgeInset=2.05,sledFinishStep=2.6,sledCourse=Object.freeze({start:{x:-45.1,z:sledStartZ},finish:{x:.25,z:sledStartZ},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
 const sledLyrics=Object.freeze(['흰 눈 사이로~','썰매를 타고~','달리는 기분~','상쾌도 하다~']);
-let sledState='idle',sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0,sledLyricIndex=-1;
-const sled=new T.Group(),sledWood=new T.MeshStandardMaterial({color:'#b9835f',roughness:.76}),sledTrim=new T.MeshStandardMaterial({color:'#f8e9d5',roughness:.68});
-function sledPiece(geometry,material,x,y,z,rotation=0){const piece=new T.Mesh(geometry,material);piece.position.set(x,y,z);piece.rotation.z=rotation;sled.add(piece);return piece}
-[-.43,.43].forEach(z=>{sledPiece(new T.BoxGeometry(1.85,.12,.12),sledWood,0,.13,z);sledPiece(new T.CylinderGeometry(.065,.065,1.9,10),sledTrim,.12,.02,z,Math.PI/2)});sledPiece(new T.BoxGeometry(.9,.16,.78),sledWood,-.18,.35,0);sledPiece(new T.BoxGeometry(.12,.55,.78),sledWood,-.72,.62,0,-.36);sled.visible=false;scene.add(sled);
-const summitSled=sled.clone();summitSled.position.set(-45.15,routeHeight(-45.15,44.65)+.08,44.65);summitSled.rotation.y=Math.PI/2;scene.add(summitSled);
-const medal=new T.Group(),medalRibbon=new T.MeshStandardMaterial({color:'#8f7ac2',roughness:.7}),medalGold=new T.MeshStandardMaterial({color:'#f4cd58',roughness:.42,metalness:.18});
-const ribbonLeft=new T.Mesh(new T.BoxGeometry(.16,.58,.06),medalRibbon),ribbonRight=ribbonLeft.clone(),medalDisk=new T.Mesh(new T.CylinderGeometry(.22,.22,.07,20),medalGold);ribbonLeft.position.set(-.11,2.40,.75);ribbonLeft.rotation.z=.28;ribbonRight.position.set(.11,2.40,.75);ribbonRight.rotation.z=-.28;medalDisk.position.set(0,2.12,.80);medalDisk.rotation.x=Math.PI/2;medal.add(ribbonLeft,ribbonRight,medalDisk);medal.visible=false;p.add(medal);
+let sledState='idle',sledArrivalStarted=0,sledFinishStarted=0,sledSteer=0,sledHeading=Math.PI/2,sledCameraReturnStarted=0,sledLyricIndex=-1;
+const sled=createSled();
+sled.visible=false;
+scene.add(sled);
+const summitSled=sled.clone();
+placeSled(summitSled,sledCourse.start.x,sledStartZ+1.6,Math.PI/2);
+scene.add(summitSled);
+const sledSeatOffset=new T.Vector3();
+function positionSledRider(x,z,yaw){
+ sledHeading=yaw;
+ placeSled(sled,x,z,yaw);
+ sledSeatOffset.set(0,SLED_RIDER_OFFSET,0).applyQuaternion(sled.quaternion);
+ p.position.copy(sled.position).add(sledSeatOffset);
+ p.rotation.set(0,yaw,0);
+ p.userData.groundY=sled.position.y;
+}
+const sledParty=createSledParty(p);
+const medal=createSledMedal();medal.visible=false;p.add(medal);
 const sledRay=new T.Raycaster(),sledPointer=new T.Vector2();let sledPress=null;
-function sledHeight(x,z){return routeHeight(x,z)+.46}
 function startSledRide(){if(!canEnterAction('sled')||sledState!=='idle')return;clearEntryActions();sledButton.hidden=true;joyV.x=joyV.z=0;mobileMove={x:0,y:0};applyModeControls('sled');beginSledRide()}
 function setSledLyric(index){if(index===sledLyricIndex)return;sledLyricIndex=index;sighStatus.classList.add('sled-lyric');sighStatus.innerHTML=`♪ <strong><em>${sledLyrics[index]}</em></strong> ♪`}
 function clearSledLyric(){sledLyricIndex=-1;sighStatus.classList.remove('sled-lyric')}
-function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sled.visible=true;p.position.set(sledCourse.start.x,sledHeight(sledCourse.start.x,sledCourse.start.z),sledCourse.start.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y-.46;sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;setSledLyric(0);snapCamera=true}
-function finishSledRide(now){sledState='finish';sled.visible=false;p.position.set(sledCourse.exit.x,surfaceHeight(sledCourse.exit.x,sledCourse.exit.z)+.07,sledCourse.exit.z);p.rotation.set(0,Math.PI/2,0);p.userData.groundY=p.position.y;medal.visible=true;sledFinishStarted=now;clearSledLyric();sighStatus.textContent='완주!';snapCamera=true}
+function beginSledRide(){sledState='riding';sledCameraReturnStarted=0;sledSteer=0;sled.visible=true;summitSled.visible=false;positionSledRider(sledCourse.start.x,sledCourse.start.z,Math.PI/2);setSledLyric(0);snapCamera=true;multiplayer?.flush?.()}
+function placeSledFinisher(spot){
+ p.position.set(spot.x,surfaceHeight(spot.x,spot.z)+.07,spot.z);
+ p.userData.groundY=p.position.y;
+}
+function sledFinishSpot(){
+ // End the run from the actual sled endpoint: Song-i steps one stride forward
+ // in the same direction they were travelling, never to a random finish tile.
+ const yaw=sledHeading;
+ return {x:sled.position.x+Math.sin(yaw)*sledFinishStep,z:sled.position.z+Math.cos(yaw)*sledFinishStep};
+}
+function arriveAtSledFinish(now){
+ // Hold the final sled pose for a beat before Song-i gets up to celebrate.
+ sledState='arrival';sledArrivalStarted=now;sledSteer=0;clearSledLyric();sighStatus.textContent='';multiplayer.flush();
+}
+function finishSledRide(now){
+ sledState='finish';sled.visible=true;summitSled.visible=false;
+ placeSledFinisher(sledFinishSpot());
+ p.rotation.set(0,Math.PI/2,0);medal.visible=true;sledFinishStarted=now;
+ clearSledLyric();sighStatus.textContent='완주!';snapCamera=true;multiplayer.flush();
+}
 function updateSled(now,dt){
  if(sledState==='idle')return;
  if(sledState==='riding'){
@@ -190,18 +222,21 @@ function updateSled(now,dt){
   // reversed from walking controls so the camera-facing left/right feel right.
   const keyboard=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
   const desired=mobileControls?-mobileMove.x:keyboard;sledSteer+=(desired-sledSteer)*(1-Math.exp(-dt*7));
-  p.position.x+=sledCourse.speed*dt;p.position.z=T.MathUtils.clamp(p.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
-  const progress=T.MathUtils.clamp((p.position.x-sledCourse.start.x)/(sledCourse.finish.x-sledCourse.start.x),0,.9999);setSledLyric(Math.min(sledLyrics.length-1,Math.floor(progress*sledLyrics.length)));
-  p.position.y=sledHeight(p.position.x,p.position.z);p.rotation.set(0,Math.atan2(sledCourse.speed,sledSteer*4.0),0);p.userData.groundY=p.position.y-.46;
-  sled.position.set(p.position.x,p.position.y-.44,p.position.z);sled.rotation.y=p.rotation.y;sled.rotation.z=-sledSteer*.10;walking=false;
-  if(p.position.x>=sledCourse.finish.x)finishSledRide(now);
+  const x=Math.min(sledCourse.finish.x,sled.position.x+sledCourse.speed*dt);
+  const z=T.MathUtils.clamp(sled.position.z+sledSteer*dt*4.0,sledCourse.minZ,sledCourse.maxZ);
+  const progress=T.MathUtils.clamp((x-sledCourse.start.x)/(sledCourse.finish.x-sledCourse.start.x),0,.9999);
+  setSledLyric(Math.min(sledLyrics.length-1,Math.floor(progress*sledLyrics.length)));
+  positionSledRider(x,z,Math.atan2(sledCourse.speed,sledSteer*4.0));
+  walking=false;
+  if(x>=sledCourse.finish.x)arriveAtSledFinish(now);
   return;
  }
- if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sledCameraReturnStarted=now;medal.visible=false;clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
+ if(sledState==='arrival'&&now-sledArrivalStarted>=1000){finishSledRide(now);return}
+ if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sled.visible=false;summitSled.visible=false;sledCameraReturnStarted=now;medal.visible=false;resetSledClap(part);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
 function applySledPose(now){
- if(sledState==='riding'){part.leg0.rotation.x=part.leg1.rotation.x=-1.12;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
- if(sledState==='finish'){const wave=Math.sin(now*.012)*.62;part.arm0.rotation.z=.7+wave;part.arm1.rotation.z=-.7-wave;part.arm0.rotation.x=-.38;part.arm1.rotation.x=-.38;medal.rotation.y=Math.sin(now*.004)*.08}
+ if(sledState==='riding'||sledState==='arrival'){p.rotation.setFromQuaternion(sled.quaternion,'YXZ');part.leg0.rotation.x=part.leg1.rotation.x=-1.72;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
+ if(sledState==='finish')clapSledRider(part,(now-sledFinishStarted)/1000);
 }
 sledButton.addEventListener('click',startSledRide);
 renderer.domElement.addEventListener('pointerdown',event=>{sledPress=[event.clientX,event.clientY]});
@@ -413,6 +448,9 @@ addEventListener('keydown',e=>{if(!mobileControls&&(e.code==='ShiftLeft'||e.code
 function hit(x,z){
  if(skyMode)return Math.abs(x)>42||Math.abs(z)>28;
  if(!traversal.canStep(p.position.x,p.position.z,x,z,worldBounds))return 1;
+ return hitsCampusObstacle(x,z);
+}
+function hitsCampusObstacle(x,z){
  // The rear-gate model overlaps the center of the marked pedestrian lane.
  // Only its decorative gate pieces are pass-through; nearby smoking-area props stay solid.
  const inRearGateLane=inRect(x,z,ROUTES.rearGatePassage);
@@ -447,7 +485,7 @@ let sittingBench=null,pendingBench=null,benchExit=null;
 currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(sledState!=='idle')return'sled';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
 canEnterAction=action=>canEnterActivity(currentActionMode(),action);
 clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;setFastWalk(false)};
-const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
+const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',sledFinishing:sledState==='finish',sledFinishAge:sledState==='finish'?(performance.now()-sledFinishStarted)/1000:0,walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,sledPhase:sledState,sledX:sled.position.x,sledZ:sled.position.z,sledYaw:sledHeading,sledY:p.position.y,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
 sitButton.textContent='앉기';standButton.textContent='일어나기';
@@ -545,7 +583,7 @@ addEventListener('resize',resize);resize();
  document.querySelector('#name').textContent=p.position.x<-62?'✦ 1캠퍼스 · 명신관 뒤편':p.position.x<-53?'✦ 1캠퍼스 · 명신관':p.position.x<-38?'✦ 1캠퍼스 · 후문':p.position.x<-19?'✦ 1캠퍼스 · 진리관':'✦ 1캠퍼스 · 순헌관';
  if(layoutView){camera.position.set(-29,120,-20);camera.up.set(0,0,-1);camera.lookAt(-29,10,-20);}
  p.userData.animate(clock.elapsedTime,sledState==='finish'?'win':sighPhase==='inhale'?'inhale':sighPhase==='exhale'?'exhale':'idle',held);
- applySledPose(now);multiplayer.update(dt,now);
+ applySledPose(now);sledParty.update(sledState==='finish'?(now-sledFinishStarted)/1000:-1);multiplayer.update(dt,now);
  if(benchExit)updateBenchExit(now);else if(sittingBench)applyBenchPose(p,sittingBench.y);
  if(sittingBench&&!smokeMode){camera.position.copy(p.position).addScaledVector(forward,9);camera.position.y+=4.2;camera.lookAt(p.position.x,p.position.y+2.2,p.position.z)}
  updateDayNight(Date.now());updateWorldShadows(p.position);renderer.render(scene,camera);dismissLoading();

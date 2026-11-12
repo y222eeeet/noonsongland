@@ -134,11 +134,12 @@ export function createSongi() {
     const o=mesh(new T.TubeGeometry(curve,20,radius,8,false),purple,[0,0,.7]);
     breathFeatures.push(o);return o;
   }
-  const smallEyes=[],closedEyes=[],brows=[];
+  const smallEyes=[],closedEyes=[],happyEyes=[],brows=[];
   for(const sign of [-1,1]){
     const x=sign*.38;
     const small=mesh(new T.CapsuleGeometry(.075,.13,4,10),purple,[x,3.04,.7]);small.scale.z=.48;smallEyes.push(small);breathFeatures.push(small);
     closedEyes.push(expressionCurve([[x-.12,3.015],[x,2.995],[x+.12,3.015]],.025));
+    happyEyes.push(expressionCurve([[x-.14,3.01],[x-.085,3.095],[x,3.13],[x+.085,3.095],[x+.14,3.01]],.029));
     // Raised inner ends, lowered outer ends: the relaxed sigh in the reference.
     brows.push(expressionCurve([[sign*.23,3.40],[sign*.33,3.32],[sign*.50,3.29]],.027));
   }
@@ -146,6 +147,21 @@ export function createSongi() {
   const mouthRim=mesh(new T.TorusGeometry(.135,.023,8,32),purple,[0,2.65,.705]);mouthRim.scale.y=1.2;breathFeatures.push(mouthRim);
   const exhaleMouth=mesh(new T.CircleGeometry(.075,24),purple,[0,2.65,.7]);exhaleMouth.scale.set(1.25,.65,1);breathFeatures.push(exhaleMouth);
   const exhaleLip=mesh(new T.TorusGeometry(.075,.025,8,24),purple,[0,2.65,.705]);exhaleLip.scale.set(1.25,.65,1);breathFeatures.push(exhaleLip);
+  const grin=new T.Shape();
+  grin.moveTo(-.28,.07);grin.quadraticCurveTo(0,.035,.28,.07);
+  grin.bezierCurveTo(.25,-.07,.15,-.165,0,-.17);
+  grin.bezierCurveTo(-.15,-.165,-.25,-.07,-.28,.07);
+  const grinOutline=grin.getPoints(16).slice(0,-1);
+  const grinCenter=new T.Vector2(0,-.035);
+  const grinVertices=[];
+  for(let i=0;i<grinOutline.length;i++){
+    const a=grinOutline[i],b=grinOutline[(i+1)%grinOutline.length];
+    for(const point of [grinCenter,b,a])grinVertices.push(point.x,point.y,0);
+  }
+  const grinGeometry=new T.BufferGeometry();
+  grinGeometry.setAttribute('position',new T.Float32BufferAttribute(grinVertices,3));
+  const happyMouth=mesh(grinGeometry,purple,[0,2.65,.7]);
+  breathFeatures.push(happyMouth);
   breathFeatures.forEach(o=>o.visible=false);
   // Every face state owns one mutually-exclusive eye layer and one
   // mutually-exclusive mouth layer. New expressions belong in this table;
@@ -156,11 +172,9 @@ export function createSongi() {
     inhale:{eyes:smallEyes,mouth:[openMouth,mouthRim]},
     exhale:{eyes:closedEyes,mouth:[exhaleMouth,exhaleLip],brows},
     sleep:{eyes:closedEyes,mouth:[parts.mouth]},
-    // A finish pose may share the normal smile, but its closed eyes must still
-    // replace (rather than overlay) the regular eye layer.
-    win:{eyes:closedEyes,mouth:[parts.mouth]}
+    win:{eyes:happyEyes,mouth:[happyMouth]}
   };
-  const allFaceLayers=[parts.eye0,parts.eye1,...smallEyes,...closedEyes,...brows,parts.mouth,openMouth,mouthRim,exhaleMouth,exhaleLip];
+  const allFaceLayers=[parts.eye0,parts.eye1,parts.mouth,...breathFeatures];
   function setFaceState(name){
     const state=faceStates[name]||faceStates.normal;
     // Visibility changes only when an expression actually changes. Rewriting
