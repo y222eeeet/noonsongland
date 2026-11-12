@@ -247,6 +247,7 @@ let chugLift=0,chugFrameTime=0;
 const chugCapInView=new T.Vector3(.11,-.17,-.85);
 const chugRaisedPosition=new T.Vector3();
 function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.visible=false;chugDizzySpirals.hide();return}if(chugPhase==='dizzy'&&now>=chugDizzyUntil){chugPhase='idle';chugDizzyUntil=0;chugDizzyStage=0;sighStatus.textContent=''}const drinking=chugPhase==='drink',dizzy=chugPhase==='dizzy';
+ chugCap.visible=chugPhase==='idle';
  const dt=chugFrameTime?Math.min(50,now-chugFrameTime):0;
  chugFrameTime=now;
  chugLift=T.MathUtils.lerp(chugLift,drinking?1:0,1-Math.exp(-dt/130));
