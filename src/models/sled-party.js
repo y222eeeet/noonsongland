@@ -41,10 +41,12 @@ export function createSledParty(avatar) {
   paper.setColorAt(i,new T.Color(colors[i%colors.length]));
   const index = i<piecesPerPopper?0:1;
   const angle = i*2.399963;
-  const spread = .55+(i%7)*.19;
-  const vy = 2.8+(i%11)*.28;
-  const direction = aim[index];
-  return {index,vx:vy*direction.x/direction.y+Math.cos(angle)*spread*.42,vy,vz:Math.sin(angle)*spread,spin:2+(i%8)*.83,angle,delay:(i%5)*.024};
+  const inward = index===0?1:-1;
+  const spread = .45+(i%7)*.18;
+  const drift = inward*(.85+((i*13)%19)*.065);
+  const lift = 2.55+((i*7)%23)*.14;
+  const gravity = 1.9+((i*5)%13)*.095;
+  return {index,drift,lift,gravity,spread,spin:2+(i%8)*.83,angle,delay:((i*11)%19)*.012};
  });
  function update(age) {
   group.visible=Number.isFinite(age)&&age>=0&&age<SLED_PARTY_DURATION;
@@ -57,11 +59,12 @@ export function createSledParty(avatar) {
   });
   particles.forEach((particle,i)=>{
    const t=Math.max(0,age-.12-particle.delay);
-   const {vx,vy,vz,spin,angle,index}=particle;
+   const {drift,lift,gravity,spread,spin,angle,index}=particle;
+   const bloom=1-Math.exp(-2.1*t);
    pose.position.copy(launchPoints[index]);
-   pose.position.x+=vx*t+Math.sin(angle+t*5)*t*.18;
-   pose.position.y+=vy*t-2.45*t*t;
-   pose.position.z+=vz*t+Math.cos(angle+t*4)*t*.14;
+   pose.position.x+=bloom*(drift+Math.cos(angle)*spread)+Math.sin(angle+t*5)*t*.13;
+   pose.position.y+=lift*t-gravity*t*t;
+   pose.position.z+=Math.sin(angle)*spread*bloom+Math.cos(angle+t*4)*t*.14;
    pose.rotation.set(angle+spin*t,angle*.31-t*3,angle*.7+t*4);
    const scale=T.MathUtils.smoothstep(t,0,.07)*(1-T.MathUtils.smoothstep(age,2,SLED_PARTY_DURATION));
    pose.scale.set(scale*(i%3===0?.5:1),scale,scale);
