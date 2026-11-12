@@ -250,7 +250,14 @@ function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.v
  const dt=chugFrameTime?Math.min(50,now-chugFrameTime):0;
  chugFrameTime=now;
  chugLift=T.MathUtils.lerp(chugLift,drinking?1:0,1-Math.exp(-dt/130));
- p.visible=false;chugForward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));chugRight.set(-chugForward.z,0,chugForward.x);camera.position.copy(p.position).addScaledVector(chugForward,.24);camera.position.y+=2.62;chugLook.copy(camera.position).addScaledVector(chugForward,18);if(mobileControls)chugLook.y+=mobilePitch*14;chugLook.y+=4.8*chugLift;camera.lookAt(chugLook);if(dizzy){const remaining=Math.max(0,Math.min(1,(chugDizzyUntil-now)/2200)),sway=Math.sin(now*.0058)*(.045+.085*remaining);camera.position.addScaledVector(chugRight,sway);camera.position.y+=Math.cos(now*.0043)*(.025+.045*remaining);camera.rotateZ(Math.sin(now*.0049)*(.012+.02*remaining));}if(dizzy)chugDizzySpirals.update(camera,now,game.clientHeight);else chugDizzySpirals.hide();chugProp.visible=true;
+ p.visible=false;chugForward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));chugRight.set(-chugForward.z,0,chugForward.x);camera.position.copy(p.position).addScaledVector(chugForward,.24);camera.position.y+=2.62;chugLook.copy(camera.position).addScaledVector(chugForward,18);if(mobileControls)chugLook.y+=mobilePitch*14;chugLook.y+=4.8*chugLift;
+ const heldMs=now-chugStartedAt;
+ const gulpMs=heldMs%1000;
+ if(drinking&&heldMs>=1000&&gulpMs<240){
+  const nod=Math.sin(Math.PI*gulpMs/240);
+  chugLook.y+=1.35*nod*nod;
+ }
+ camera.lookAt(chugLook);if(dizzy){const remaining=Math.max(0,Math.min(1,(chugDizzyUntil-now)/2200)),sway=Math.sin(now*.0058)*(.045+.085*remaining);camera.position.addScaledVector(chugRight,sway);camera.position.y+=Math.cos(now*.0043)*(.025+.045*remaining);camera.rotateZ(Math.sin(now*.0049)*(.012+.02*remaining));}if(dizzy)chugDizzySpirals.update(camera,now,game.clientHeight);else chugDizzySpirals.hide();chugProp.visible=true;
  chugProp.position.copy(camera.position).addScaledVector(chugRight,.34).addScaledVector(chugForward,1.38);
  chugProp.position.y-=.76;
  chugProp.rotation.set(0,p.rotation.y,-.28);
