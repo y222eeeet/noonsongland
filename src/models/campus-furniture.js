@@ -10,6 +10,12 @@ export const LAMP_SPOTS=[
 ].map(([x,z,y])=>{const [wx,wz]=map(x,z);return [wx,y,wz]});
 export const BENCH_SPOTS=[[615,434],[750,434],[824,434]].map(p=>map(...p));
 
+// Three trees on each bank of the long river stretch west of the bridge.
+const RIVERSIDE_CONIFERS=[
+ [-15,10.4,.92],[-26,11.25,1.06],[-37,11.5,.96],
+ [-15,28.65,1.04],[-26,28.4,.94],[-37,29.0,1.1]
+];
+
 export function addCampusFurniture(scene,obstacles,M){
  const root=new T.Group();root.name='marked-campus-furniture';scene.add(root);
  const leaves=new T.MeshStandardMaterial({color:'#b6d97a',roughness:.95});
@@ -21,6 +27,23 @@ export function addCampusFurniture(scene,obstacles,M){
   mesh(tree,new T.CylinderGeometry(.27,.43,4.5,10),trunk,0,2.25,0);
   [[0,7.3,0,2.55,3.05,2.35],[-1.1,6.5,.15,1.8,2.3,1.8],[1.0,6.8,-.12,1.8,2.4,1.8],[.15,8.1,.1,1.85,2.45,1.8]].forEach(([a,b,c,sx,sy,sz],j)=>{const leaf=mesh(tree,new T.SphereGeometry(1,16,12),j===3?leafLight:leaves,a,b,c);leaf.scale.set(sx,sy,sz)});
   obstacles.push({x,z,r:.5});
+ });
+ const pineTrunk=new T.CylinderGeometry(.13,.23,1.35,8);
+ const pineTiers=[
+  {y:1.75,geometry:new T.ConeGeometry(1.25,1.85,9),color:'#567f68'},
+  {y:2.54,geometry:new T.ConeGeometry(1.02,1.75,9),color:'#689777'},
+  {y:3.27,geometry:new T.ConeGeometry(.76,1.60,9),color:'#7daa85'}
+ ].map(tier=>({...tier,material:new T.MeshStandardMaterial({color:tier.color,roughness:.94})}));
+ RIVERSIDE_CONIFERS.forEach(([x,z,scale],index)=>{
+  const tree=new T.Group();
+  tree.name='riverside-conifer';
+  tree.position.set(x,0,z);
+  tree.rotation.y=index*.39;
+  tree.scale.setScalar(scale);
+  root.add(tree);
+  mesh(tree,pineTrunk,trunk,0,.675,0);
+  for(const tier of pineTiers)mesh(tree,tier.geometry,tier.material,0,tier.y,0);
+  obstacles.push({x,z,r:.23*scale});
  });
  BENCH_SPOTS.forEach(([x,z],index)=>{
   const bench=new T.Group();bench.name='lower-road-bench';bench.position.set(x,.05,z+.25);root.add(bench);
