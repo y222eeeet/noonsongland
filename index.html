@@ -172,7 +172,7 @@ const sledButton=document.createElement('button');sledButton.type='button';sledB
 const sledStartZ=ROUTES.sledHill.z1-3.75;
 const sledEdgeInset=2.05,sledFinishStep=2.6,sledCourse=Object.freeze({start:{x:-45.1,z:sledStartZ},finish:{x:.25,z:sledStartZ},minZ:ROUTES.sledHill.z0+sledEdgeInset,maxZ:ROUTES.sledHill.z1-sledEdgeInset,speed:7.4});
 const sledLyrics=Object.freeze(['흰 눈 사이로~','썰매를 타고~','달리는 기분~','상쾌도 하다~']);
-let sledState='idle',sledArrivalStarted=0,sledFinishStarted=0,sledSteer=0,sledCameraReturnStarted=0,sledLyricIndex=-1;
+let sledState='idle',sledArrivalStarted=0,sledFinishStarted=0,sledSteer=0,sledHeading=Math.PI/2,sledCameraReturnStarted=0,sledLyricIndex=-1;
 const sled=createSled();
 sled.visible=false;
 scene.add(sled);
@@ -181,6 +181,7 @@ placeSled(summitSled,sledCourse.start.x,sledStartZ+1.6,Math.PI/2);
 scene.add(summitSled);
 const sledSeatOffset=new T.Vector3();
 function positionSledRider(x,z,yaw){
+ sledHeading=yaw;
  placeSled(sled,x,z,yaw);
  sledSeatOffset.set(0,SLED_RIDER_OFFSET,0).applyQuaternion(sled.quaternion);
  p.position.copy(sled.position).add(sledSeatOffset);
@@ -201,7 +202,7 @@ function placeSledFinisher(spot){
 function sledFinishSpot(){
  // End the run from the actual sled endpoint: Song-i steps one stride forward
  // in the same direction they were travelling, never to a random finish tile.
- const yaw=p.rotation.y;
+ const yaw=sledHeading;
  return {x:sled.position.x+Math.sin(yaw)*sledFinishStep,z:sled.position.z+Math.cos(yaw)*sledFinishStep};
 }
 function arriveAtSledFinish(now){
@@ -231,7 +232,7 @@ function updateSled(now,dt){
   return;
  }
  if(sledState==='arrival'&&now-sledArrivalStarted>=1000){finishSledRide(now);return}
- if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sled.visible=false;summitSled.visible=true;sledCameraReturnStarted=now;medal.visible=false;resetSledClap(part);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
+ if(sledState==='finish'&&now-sledFinishStarted>=3000){sledState='idle';sled.visible=true;summitSled.visible=false;sledCameraReturnStarted=now;medal.visible=false;resetSledClap(part);clearSledLyric();sighStatus.textContent='';applyModeControls('idle');snapCamera=false;multiplayer?.flush?.()}
 }
 function applySledPose(now){
  if(sledState==='riding'||sledState==='arrival'){p.rotation.setFromQuaternion(sled.quaternion,'YXZ');part.leg0.rotation.x=part.leg1.rotation.x=-1.72;part.arm0.rotation.x=-.58;part.arm1.rotation.x=-.58;return}
@@ -484,7 +485,7 @@ let sittingBench=null,pendingBench=null,benchExit=null;
 currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(sledState!=='idle')return'sled';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
 canEnterAction=action=>canEnterActivity(currentActionMode(),action);
 clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;setFastWalk(false)};
-const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',sledFinishing:sledState==='finish',sledFinishAge:sledState==='finish'?(performance.now()-sledFinishStarted)/1000:0,walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,sledPhase:sledState,sledX:sled.position.x,sledZ:sled.position.z,sledYaw:p.rotation.y,sledY:p.position.y,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
+const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',sledFinishing:sledState==='finish',sledFinishAge:sledState==='finish'?(performance.now()-sledFinishStarted)/1000:0,walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,sledPhase:sledState,sledParked:sledState==='idle'&&sled.visible,sledX:sled.position.x,sledZ:sled.position.z,sledYaw:sledHeading,sledY:p.position.y,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
 sitButton.textContent='앉기';standButton.textContent='일어나기';
