@@ -10,7 +10,6 @@ export const ROUTES={
  // The new path joins the old snow slope along its south edge.
  ramp:{x0:-47,x1:2,z0:46,z1:51},
  sledHill:{x0:-47,x1:2,z0:32,z1:46},
- groundWalk:{x0:-2,x1:2,z0:18,z1:38},
  upper:10.78,lower:.05
 };
 export const inRect=(x,z,r)=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1;
@@ -22,6 +21,5 @@ export function routeHeight(x,z){
  if(inRect(x,z,s)){const step=Math.min(s.steps-1,Math.floor((z-s.z0)/(s.z1-s.z0)*s.steps));return ROUTES.lower+(ROUTES.upper-ROUTES.lower)*(1-step/s.steps)}
  if(inRect(x,z,ramp)||insideSledHill(x,z))return ROUTES.upper+(ROUTES.lower-ROUTES.upper)*(x-ramp.x0)/(ramp.x1-ramp.x0);
  if(inRect(x,z,ROUTES.smokingWalk)||inRect(x,z,ROUTES.smokingRear)||inRect(x,z,ROUTES.rearGatePassage)||inRect(x,z,ROUTES.southCourt)||inRect(x,z,ROUTES.southCourtExtension))return ROUTES.upper;
- if(inRect(x,z,ROUTES.groundWalk))return ROUTES.lower;
  return null;
 }
