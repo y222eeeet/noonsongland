@@ -8,6 +8,9 @@ export const ROUTES={
  southCourt:{x0:-70,x1:-47,z0:17,z1:46},
  // Myeongshin hill: the snow field is reserved for sledding.  The narrow
  // right-hand strip is the only walking route and reaches the small ground gap.
+ // `ramp` is also retained for the campus terrain mesh.  Movement uses
+ // `sledHill`, so rendering and traversal can evolve independently.
+ ramp:{x0:-47,x1:2,z0:38,z1:46},
  sledHill:{x0:-47,x1:2,z0:38,z1:46},
  sledWalk:{x0:-47,x1:2,z0:42.45,z1:46},
  groundWalk:{x0:-2,x1:2,z0:18,z1:46},
