@@ -55,6 +55,7 @@ export function createRemoteActions(avatar, scene) {
  function update(s,now,elapsed,dt){
   const smoke=s.smoking===true,phase=smoke?s.smokePhase:s.action;
   cigarette.visible=smoke;
+  thumb.visible=smoke;
   const beverage=s.drinking===true&&!smoke&&s.realm==='campus';
   const drinking=beverage&&s.drinkPhase==='drink';
   const dizzy=beverage&&s.drinkPhase==='dizzy';

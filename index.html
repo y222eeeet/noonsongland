@@ -223,6 +223,15 @@ const chugCap=new T.Mesh(
 );
 const chamisulTexture=new T.TextureLoader().load(chamisulLabelUrl);chamisulTexture.colorSpace=T.SRGBColorSpace;const chugLabel=new T.Mesh(new T.CylinderGeometry(.226,.226,.60,24,1,true,Math.PI/2,Math.PI),new T.MeshStandardMaterial({map:chamisulTexture,roughness:.68,side:T.FrontSide}));chugBottle.position.y=.54;chugLabel.position.y=.88;chugCap.position.y=1.86;chugProp.add(chugBottle,chugLabel,chugCap);chugProp.visible=false;scene.add(chugProp);
 const handMat=new T.MeshStandardMaterial({color:'#fff8ef',roughness:.9});
+const chugPalm=new T.Mesh(new T.SphereGeometry(1,12,8),handMat);
+chugPalm.position.set(-.26,.79,-.10);
+chugPalm.scale.set(.16,.23,.15);
+chugProp.add(chugPalm);
+const chugArm=new T.Mesh(new T.CapsuleGeometry(.15,1,5,12),handMat);
+chugArm.visible=false;
+scene.add(chugArm);
+const chugWrist=new T.Vector3(),chugArmEnd=new T.Vector3(),chugArmAxis=new T.Vector3();
+const chugUp=new T.Vector3(0,1,0);
 const hand=new T.Mesh(new T.CapsuleGeometry(.17,2.40,5,12),handMat);hand.position.set(.04,-1.20,0);hand.rotation.z=-.12;
 const thumb=new T.Mesh(new T.SphereGeometry(.105,10,8),handMat);thumb.position.set(.14,-.04,.10);
 const filter=new T.Mesh(new T.CylinderGeometry(.047,.047,.20,12),filterMat);filter.position.y=.08;
@@ -261,7 +270,7 @@ const chugDizzySpirals=createDizzySpirals(scene);
 let chugLift=0,chugFrameTime=0;
 const chugCapInView=new T.Vector3(.11,-.17,-.85);
 const chugRaisedPosition=new T.Vector3();
-function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.visible=false;chugDizzySpirals.hide();return}if(chugPhase==='dizzy'&&now>=chugDizzyUntil){chugPhase='idle';chugDizzyUntil=0;chugDizzyStage=0;sighStatus.textContent=''}const drinking=chugPhase==='drink',dizzy=chugPhase==='dizzy';
+function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.visible=false;chugArm.visible=false;chugDizzySpirals.hide();return}if(chugPhase==='dizzy'&&now>=chugDizzyUntil){chugPhase='idle';chugDizzyUntil=0;chugDizzyStage=0;sighStatus.textContent=''}const drinking=chugPhase==='drink',dizzy=chugPhase==='dizzy';
  chugCap.visible=chugPhase==='idle';
  const dt=chugFrameTime?Math.min(50,now-chugFrameTime):0;
  chugFrameTime=now;
@@ -279,12 +288,31 @@ function updateChugging(now){if(!chugMode){chugLift=0;chugFrameTime=0;chugProp.v
  chugProp.rotation.set(0,p.rotation.y,-.28);
  // Move the cap into view while tilting around the horizontal axis only.
  chugProp.position.add(chugLook.copy(chugCap.position).multiplyScalar(.72).applyQuaternion(chugProp.quaternion));
- chugRaisedPosition.copy(chugCapInView).applyQuaternion(camera.quaternion).add(camera.position);
+ const halfViewHeight=Math.tan(T.MathUtils.degToRad(camera.getEffectiveFOV())/2);
+ const halfViewWidth=halfViewHeight*camera.aspect;
+ const portrait=camera.aspect<1;
+ if(portrait){
+  chugProp.position.set(-.08*halfViewWidth,-.12,-2.05);
+  chugProp.position.applyQuaternion(camera.quaternion).add(camera.position);
+ }
+ chugRaisedPosition.copy(chugCapInView);
+ if(portrait)chugRaisedPosition.set(.12*halfViewWidth,-.22,-1.95);
+ chugRaisedPosition.applyQuaternion(camera.quaternion).add(camera.position);
  chugProp.position.lerp(chugRaisedPosition,chugLift);
  chugProp.rotation.set(-1.18*chugLift,p.rotation.y,-.28,'YXZ');
- const scale=T.MathUtils.lerp(.72,.84,chugLift);
+ const scale=T.MathUtils.lerp(portrait?.64:.72,portrait?.67:.84,chugLift);
  chugProp.scale.setScalar(scale);
  chugProp.position.addScaledVector(chugLook.copy(chugCap.position).applyQuaternion(chugProp.quaternion),-scale);
+ // Keep the forearm connected to the grip as the bottle tilts.
+ chugWrist.copy(chugPalm.position).multiplyScalar(scale).applyQuaternion(chugProp.quaternion).add(chugProp.position);
+ chugArmEnd.set(1.6*halfViewWidth,-1.55*halfViewHeight,-1.25);
+ chugArmEnd.applyQuaternion(camera.quaternion).add(camera.position);
+ chugArmAxis.subVectors(chugWrist,chugArmEnd);
+ const armLength=chugArmAxis.length();
+ chugArm.position.copy(chugWrist).lerp(chugArmEnd,.5);
+ chugArm.quaternion.setFromUnitVectors(chugUp,chugArmAxis.normalize());
+ chugArm.scale.set(.82,armLength/1.3,.82);
+ chugArm.visible=true;
 }
 window.enterSongiSmoke=()=>{p.visible=false;smokePhase='idle';smokeBurn=new URLSearchParams(location.search).has('smokeTest')?.201:1;cigaretteFirstInhaleRecorded=false;smokeHandLift=0;smokeProp.userData.lastFrame=0;smokeInhaleButton.hidden=false;sighStatus.textContent=''};window.leaveSongiSmoke=()=>{p.visible=true;smokeProp.visible=false;smokeCloud.visible=false;smokePhase='idle';snapCamera=true;sighStatus.textContent=''};window.startSongiSmoke=()=>{if(!smokeMode||smokePhase==='exhale'||smokePhase==='reload')return;if(!cigaretteFirstInhaleRecorded){cigaretteFirstInhaleRecorded=true;recordFirstInhale()}smokePhase='inhale';smokeStarted=smokeLast=performance.now();sighStatus.textContent='흡입 중…'};window.finishSongiSmoke=()=>{if(!smokeMode||smokePhase!=='inhale')return;prepareSmokeExhale(smokeCloud,(performance.now()-smokeStarted)/1000);smokePhase='exhale';smokePuffStarted=performance.now();smokeOrigin.copy(p.position).addScaledVector(smokeForward,1.4);smokeOrigin.y+=2.5;smokeCloud.position.copy(smokeOrigin);smokeCloud.scale.setScalar(1);smokeMat.opacity=.48;smokeCloud.visible=true;smokeInhaleButton.hidden=true;sighStatus.textContent='후—'};
 function updateSwimming(now){if(!swimming)return;const elapsed=Math.min(1,(now-swimDiveStarted)/620),ease=elapsed*elapsed*(3-2*elapsed),frame=orbitFrame({swimEnteredAt,swimOrbitAngle,swimDirection},Date.now());swimOrientation=frame.roll;p.position.set(frame.x,.18-.38*ease,frame.z);p.rotation.set(-Math.PI/2*(.30+.70*ease),0,frame.roll);part.arm0.rotation.x=.34;part.arm1.rotation.x=-.34;part.leg0.rotation.x=.72;part.leg1.rotation.x=.72;}
