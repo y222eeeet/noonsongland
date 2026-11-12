@@ -33,16 +33,21 @@ export function addMyungshinHall(world, obstacles, M){
   mesh(new T.BoxGeometry(19,.12,31),M.path,-59,campusY-.06,-17);
   mesh(new T.BoxGeometry(14,.12,7),M.path,-44,campusY-.05,-.7);
   mesh(new T.BoxGeometry(14,.12,6),M.path,-44,campusY-.05,-32.5);
-  function bench(x,z,rot){
+  function bench(x,z,rot,index){
     const g=new T.Group();g.position.set(x,campusY,z);g.rotation.y=rot;scene.add(g);
+    // `scene` is offset from world space, while seating and multiplayer use
+    // world coordinates. Keep every visible bench part on this one descriptor.
+    const seat={id:`myungshin-smoking-bench-${index}`,x:x-27,z:z+21,y:campusY+.76,rotation:rot};
+    g.userData.benchSeat=seat;
     mesh(new T.BoxGeometry(2.7,.18,.65),wood,0,.72,0,g);
     mesh(new T.BoxGeometry(2.7,.72,.14),M.lav,0,1.1,-.31,g);
     for(const s of [-1,1])mesh(new T.BoxGeometry(.15,.66,.45),M.dark,s*1,.33,0,g);
+    g.traverse(part=>part.userData.benchSeat=seat);
     obstacles.push({x,z,w:rot? .55:1.5,h:rot?1.5:.55});
   }
   // Eight benches leave a generous clear aisle around the pavilion.
-  [-28,-21,-14,-7].forEach(z=>bench(-66,z,Math.PI/2));
-  [-29,-22,-15,-8].forEach(z=>bench(-52,z,-Math.PI/2));
+  [-28,-21,-14,-7].forEach((z,index)=>bench(-66,z,Math.PI/2,index));
+  [-29,-22,-15,-8].forEach((z,index)=>bench(-52,z,-Math.PI/2,index+4));
   const pavilion=new T.Group();pavilion.position.set(-59,campusY,-19);pavilion.scale.setScalar(1.5);scene.add(pavilion);
   mesh(new T.CylinderGeometry(3.6,3.8,.2,8),M.cream,0,.1,0,pavilion);
   const canopy=mesh(new T.ConeGeometry(4.4,2.1,4),M.pink,0,4.15,0,pavilion);canopy.rotation.y=Math.PI/4;
