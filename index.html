@@ -521,11 +521,11 @@ addEventListener('resize',resize);resize();
  if(sledActive){
   // Ride and finish views stay in front of Song-i so the sled face and
   // celebration are both visible to the rider.
-  cg.copy(p.position).addScaledVector(forward,9.5);cg.y+=6.4;lg.copy(p.position).setY(p.position.y+2.05);
+  cg.copy(p.position).addScaledVector(forward,12);cg.y+=6.4;lg.copy(p.position).setY(p.position.y+2.05);
  }else if(sledReturning){
   // Sweep around Song-i's left side instead of cutting directly from the
   // front celebration view to the normal rear-follow camera.
-  const t=sledReturnAge*sledReturnAge*(3-2*sledReturnAge),radius=9.5+(17-9.5)*t;
+  const t=sledReturnAge*sledReturnAge*(3-2*sledReturnAge),radius=12+(17-12)*t;
   const leftX=-forward.z,leftZ=forward.x,angle=Math.PI*t;
   cg.copy(p.position).addScaledVector(forward,Math.cos(angle)*radius);cg.x+=leftX*Math.sin(angle)*radius;cg.z+=leftZ*Math.sin(angle)*radius;cg.y+=6.4+(21-6.4)*t;
   lg.copy(p.position).setY(p.position.y+2.05+.35*t);
