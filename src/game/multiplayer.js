@@ -6,14 +6,14 @@ import { SKY_ROLL_ZONE, getSkyRollFrame } from './sky-realm.js';
 import { orbitFrame } from './swim-orbit.js';
 
 // Ephemeral movement and social interactions are broadcast, never written to the database.
-export function createMultiplayer(scene, readState, surfaceHeight, bounds, localAvatar, canStartSocial=()=>true, canPlace=()=>true) {
+export function createMultiplayer(scene, readState, surfaceHeight, bounds, localAvatar, canStartSocial=()=>true, canPlace=()=>true, resolveSpawn=()=>false) {
  const sourceReadState=readState;
  readState=()=>({...sourceReadState(),skyMotion:localAvatar.userData.skyMotion,skyPose:localAvatar.userData.skyPose||'idle',skyBedIndex:Number.isInteger(localAvatar.userData.skyBedIndex)?localAvatar.userData.skyBedIndex:-1,skyRollStartedAt:Number.isFinite(localAvatar.userData.skyRollStartedAt)?localAvatar.userData.skyRollStartedAt:0});
  const peers=new Map(),connectionId=crypto.randomUUID(),selfMatchActions=createRemoteActions(localAvatar,scene);
  const runtime=scene.userData.matchRuntime||{},renderer=runtime.renderer,camera=runtime.camera,game=runtime.game;
  const raycaster=new T.Raycaster(),pointer=new T.Vector2(),midpoint=new T.Vector3(),toward=new T.Vector3(),cameraOffset=new T.Vector3(),rollCenter=new T.Vector3(),rollOffset=new T.Vector3();
  let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false,lastSentSighEvent=-1;
- let channel,channelRealm='',identity,ready=false,lastSend=0,sequence=0,retryAt=0;
+ let channel,channelRealm='',identity,ready=false,lastSend=0,sequence=0,retryAt=0,spawnResolved=false;
  let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false;
  const queued=[];
 
@@ -82,7 +82,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function clearMatchTags(){disposeTag(localAvatar,localMatchTag);const peer=taggedPartnerId&&peers.get(taggedPartnerId);if(peer)disposeTag(peer.mesh,remoteMatchTag);localMatchTag=remoteMatchTag=undefined;taggedPartnerId=undefined;if(ownLabel)ownLabel.visible=true}
  function endMatdamView(){matdam=null;clearMatchTags();selfMatchActions.hide();localAvatar.visible=!readState().smoking}
  function updateMatchTags(){if(!matdam){clearMatchTags();return}const peer=peers.get(matdam.partnerId);if(!peer?.mesh)return;if(taggedPartnerId!==matdam.partnerId){clearMatchTags();taggedPartnerId=matdam.partnerId;localMatchTag=matchTag('나','#8f6db0');remoteMatchTag=matchTag(peer.name||'상대','#5f5473');localAvatar.add(localMatchTag);peer.mesh.add(remoteMatchTag)}if(ownLabel)ownLabel.visible=false}
- function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)&&peer.last>0&&now-peer.last>120000)remove(id);for(const [id,m] of members)if(id!==connectionId){const peer=createPeer(id);if(peer)peer.name=m.name}for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state)}
+ function sync(){if(!channel||!ready)return;const members=new Map();for(const entries of Object.values(channel.presenceState()))for(const m of entries)if(typeof m.connectionId==='string'&&typeof m.userId==='string'&&typeof m.name==='string')members.set(m.connectionId,m);if(!spawnResolved){spawnResolved=true;resolveSpawn([...members.values()].filter(m=>m.connectionId!==connectionId).map(m=>m.state));lastPosition=undefined}const now=performance.now();for(const [id,peer] of peers)if(!members.has(id)&&peer.last>0&&now-peer.last>120000)remove(id);for(const [id,m] of members)if(id!==connectionId){const peer=createPeer(id);if(peer)peer.name=m.name}for(const [id,m] of members)if(id!==connectionId&&m.state)receive(m.state)}
  function receive(s){if(!ready||!s||s.connectionId===connectionId)return;if(![s.x,s.z,s.rotation,s.held].every(Number.isFinite)||s.x<bounds.minX||s.x>bounds.maxX||s.z<bounds.minZ||s.z>bounds.maxZ||!['idle','inhale','exhale'].includes(s.action))return;const peer=createPeer(s.connectionId);if(!peer||!Number.isSafeInteger(s.seq)||s.seq<=peer.seq)return;peer.seq=s.seq;peer.last=performance.now();peer.state={...peer.state,...s,realm:s.realm==='sky'?'sky':'campus',held:Math.max(0,Math.min(s.held,120))};if(!peer.mesh.visible)peer.mesh.position.set(s.x,surfaceHeight(s.x,s.z,s.realm)+.07,s.z);peer.mesh.visible=true}
  function beginMatdam(partnerId){matdam={partnerId};endSent=false;requestButton.hidden=true;localAvatar.visible=true;updateMatchTags()}
  function isLevelMatchPosition(anchor,position){if(!anchor||!position||![anchor.x,anchor.z,position.x,position.z].every(Number.isFinite))return false;if(position.x<bounds.minX||position.x>bounds.maxX||position.z<bounds.minZ||position.z>bounds.maxZ)return false;return Math.abs(surfaceHeight(anchor.x,anchor.z)-surfaceHeight(position.x,position.z))<=1.12}
