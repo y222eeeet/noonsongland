@@ -388,8 +388,8 @@ renderer.render=(activeScene,activeCamera)=>{
 function finishInhale(){if(!inhaling)return;const held=(performance.now()-inhaleStart)/1000;prepareExhale(sighBreath,held);sighReleasePuff=Math.min(held/20,.22);inhaling=false;sighMode=true;sighPhase='exhale';faceView=true;snapCamera=true;sighLevel=held>=10?3:held>=5?2:1;exhaleUntil=performance.now()+700;p.updateMatrixWorld(true);p.localToWorld(breathOrigin.set(0,2.68,.92));breathForward.set(Math.sin(p.rotation.y),0,Math.cos(p.rotation.y));breathStarted=performance.now();breathMaterial.opacity=.58;sighBreath.scale.setScalar(1);sighBreath.visible=true;sighStatus.textContent=`휴— ${sighLevel}단계 한숨`;inhaleButton.hidden=true;clearTimeout(sighExitTimer);sighExitTimer=setTimeout(()=>{if(!sighMode||inhaling)return;sighPhase='ready';inhaleButton.hidden=false;sighStatus.textContent='다시 들이마실 수 있어요';sighExitTimer=setTimeout(()=>{if(!inhaling)leaveSighMode()},3000)},700)}
 window.cancelSongiSigh=()=>{sighBreath.visible=false;breathStarted=-1;};
 window.finishSongiInhale=finishInhale;
-const keys={},joyV={x:0,z:0},mobileControls=matchMedia('(hover:none) and (pointer:coarse)').matches;let walking=false,time=0,angle=0,mobileYaw=p.rotation.y,mobilePitch=0,mobileMove={x:0,y:0};
-addEventListener('keydown',e=>{if(/Arrow|Key[WASD]/.test(e.code)){keys[e.code]=1;e.preventDefault()}});addEventListener('keyup',e=>keys[e.code]=0);
+const keys={},joyV={x:0,z:0},mobileControls=matchMedia('(hover:none) and (pointer:coarse)').matches;let walking=false,time=0,angle=0,mobileYaw=p.rotation.y,mobilePitch=0,mobileMove={x:0,y:0},shiftWalk=false;
+addEventListener('keydown',e=>{if(!mobileControls&&(e.code==='ShiftLeft'||e.code==='ShiftRight')){if(canEnterAction('fast')){shiftWalk=true;e.preventDefault()}return}if(/Arrow|Key[WASD]/.test(e.code)){keys[e.code]=1;e.preventDefault()}});addEventListener('keyup',e=>{if(e.code==='ShiftLeft'||e.code==='ShiftRight')shiftWalk=false;keys[e.code]=0});addEventListener('blur',()=>shiftWalk=false);
 function hit(x,z){
  if(skyMode)return Math.abs(x)>42||Math.abs(z)>28;
  if(!traversal.canStep(p.position.x,p.position.z,x,z,worldBounds))return 1;
@@ -405,7 +405,7 @@ function move(x,z,dt){
  if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return;
  if(smokeMode&&smokePhase==='inhale'||chugMode&&chugPhase==='drink')x=z=0;
  const riding=!skyMode&&onMovingWalk(p.position.x,p.position.z);
- const speed=fastWalk?2:1;
+ const speed=fastWalk||shiftWalk?2:1;
  const stepX=(riding?Math.min(0,x):x)*speed-(riding?MOVING_WALK_SPEED*dt:0);
  const stepZ=z*speed;
  if(stepX&&!hit(p.position.x+stepX,p.position.z))p.position.x+=stepX;
@@ -424,7 +424,7 @@ const layoutView=new URLSearchParams(location.search).get('view')==='layout';if(
 let sittingBench=null,pendingBench=null,benchExit=null;
 currentActionMode=()=>{if(guestbook.isOpen())return'guestbook';if(sledState!=='idle')return'sled';if(skyMode)return skyPose==='idle'?'sky':'sky-rest';if(swimming)return'swim';if(sighMode)return'sigh';if(chugMode)return'drink';if(smokeMode)return sittingBench?'seated-smoke':'smoke';if(sittingBench)return'seated';return'idle'};
 canEnterAction=action=>canEnterActivity(currentActionMode(),action);
-clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;fastWalk=false;fastButton.textContent='빠르게 걷기 ×1';fastButton.style.background='#ffffffb8'};
+clearEntryActions=()=>{portalButton.hidden=true;swimButton.hidden=true;sitButton.hidden=true;sledButton.hidden=true;pendingBench=null;swimPoint=null;fastWalk=false;shiftWalk=false;fastButton.textContent='빠르게 걷기 ×1';fastButton.style.background='#ffffffb8'};
 const multiplayer=createMultiplayer(scene,()=>({x:p.position.x,z:p.position.z,rotation:p.rotation.y,realm:skyMode?'sky':'campus',walking:walking&&(!sittingBench||Boolean(benchExit))&&!swimming,action:inhaling?'inhale':sighMode&&inhaleButton.hidden?'exhale':'idle',held:smokeMode?(smokePhase==='inhale'?(performance.now()-smokeStarted)/1000:0):inhaling?(performance.now()-inhaleStart)/1000:0,swimming,swimEnteredAt,swimOrientation,swimOrbitAngle,swimDirection,smoking:smokeMode,drinking:chugMode,drinkPhase:chugPhase,drinkAge:chugPhase==='drink'?(performance.now()-chugStartedAt)/1000:0,drinkDizzyStage:chugDizzyStage,seatedBench:benchExit?'':sittingBench?.id||'',seatedY:benchExit?undefined:sittingBench?.y,smokePhase,smokeBurn,sighEvent:breathStarted,sighVisual:{origin:breathOrigin.toArray(),rotation:Math.atan2(breathForward.x,breathForward.z),profile:sighBreath.userData.exhale||{count:4,scale:1,opacity:.58},puff:sighReleasePuff},sighAge:breathStarted>0?(performance.now()-breathStarted)/1000:0,smokeEvent:smokePuffStarted,smokeAge:smokePuffStarted>0?(performance.now()-smokePuffStarted)/1000:0}),surfaceHeight,worldBounds,p,()=>currentActionMode()==='smoke',(x,z,from)=>!hit(x,z)&&traversal.canStep(from.x,from.z,x,z,worldBounds),resolveCampusSpawn);
 const sitButton=document.createElement('button'),standButton=document.createElement('button');
 [sitButton,standButton].forEach(button=>{button.type='button';button.hidden=true;button.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#a98ad0;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #392e4444";game.append(button)});
