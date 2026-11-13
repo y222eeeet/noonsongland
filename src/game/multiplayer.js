@@ -15,7 +15,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  const runtime=scene.userData.matchRuntime||{},renderer=runtime.renderer,camera=runtime.camera,game=runtime.game;
  const raycaster=new T.Raycaster(),pointer=new T.Vector2(),midpoint=new T.Vector3(),toward=new T.Vector3(),cameraOffset=new T.Vector3(),rollCenter=new T.Vector3(),rollOffset=new T.Vector3();
  let ownLabel,ownName,localMatchTag,remoteMatchTag,taggedPartnerId,lastAction='',lastPosition,sending=false,disposed=false,lastSentSighEvent=-1;
- let channel,channelRealm='',connectingRealm='',identity,ready=false,lastSend=0,sequence=0,retryAt=0,spawnResolved=false;
+ let channel,channelRealm='',identity,ready=false,lastSend=0,sequence=0,retryAt=0,spawnResolved=false;
  let selectedPeerId='',pendingRequest=null,matdam=null,endSent=false;
  const queued=[];
 
@@ -33,9 +33,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  function showToast(message){toast.textContent=message;toast.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.hidden=true,2600)}
  function closeModal(){modal.style.display='none';pendingRequest=null}
 
- function realmChannel(realm){return realm==='sky'?'sky':'campus'}
- function clearPeers(){for(const id of [...peers.keys()])remove(id)}
- function reconnect(current){if(disposed||channel!==current)return;ready=false;connectingRealm='';retryAt=performance.now()+5000}
+ function reconnect(current){if(disposed||channel!==current)return;ready=false;retryAt=performance.now()+5000}
  async function broadcast(event='state',payload,important=false,fullState=false){
   const current=channel;if(!ready||!current)return false;
   if(sending){if(important)queued.push({event,payload});return false}
@@ -122,37 +120,16 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
  game?.addEventListener('pointerdown',event=>{if(!requestButton.hidden&&!requestButton.contains(event.target)){selectedPeerId='';requestButton.hidden=true}});
  requestButton.addEventListener('click',()=>{const peer=peers.get(selectedPeerId);if(!peer?.state?.smoking){requestButton.hidden=true;return}void sendTargeted('matdam-request',selectedPeerId);requestButton.hidden=true;showToast('맞담 신청을 보냈어요.')});
  if(renderer&&camera){const baseRender=renderer.render.bind(renderer);renderer.render=(activeScene,activeCamera)=>{const peer=matdam&&peers.get(matdam.partnerId);const matched=Boolean(peer?.mesh?.visible&&readState().smoking);scene.userData.matdamCamera=matched;if(matched){midpoint.copy(localAvatar.position).add(peer.mesh.position).multiplyScalar(.5);toward.copy(peer.mesh.position).sub(localAvatar.position);toward.y=0;if(toward.lengthSq()>.01){toward.normalize();cameraOffset.set(toward.z,0,-toward.x).multiplyScalar(8.7);activeCamera.position.copy(midpoint).add(cameraOffset);activeCamera.position.y=midpoint.y+4.1;activeCamera.lookAt(midpoint.x,midpoint.y+2.15,midpoint.z)}}baseRender(activeScene,activeCamera);scene.userData.matdamCamera=false}}
- async function connect(player,targetRealm=realmChannel(readState().realm)){
-  if(disposed||connectingRealm===targetRealm&&identity?.id===player.id)return;
-  const switching=channelRealm!==''&&channelRealm!==targetRealm;
-  identity=player;ready=false;connectingRealm=targetRealm;
-  const old=channel;channel=null;channelRealm=targetRealm;
-  // A player cannot interact across worlds. Drop stale visual state at the
-  // boundary so the new realm can populate directly from its own presence.
-  if(switching)clearPeers();
-  if(old)await supabase.removeChannel(old);
-  if(disposed||identity!==player||connectingRealm!==targetRealm)return;
-  const current=supabase.channel(`noonsong:${targetRealm}:v1`,{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});
-  channel=current;
-  current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast('state',undefined,false,true)}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});
-  current.subscribe(async status=>{
-   if(channel!==current||disposed)return;
-   if(status==='SUBSCRIBED'){
-    retryAt=0;ready=true;connectingRealm='';
-    const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});
-    if(channel!==current)return;
-    if(result!=='ok'){reconnect(current);return}
-    sync();lastSend=0;void broadcast('request-state',{connectionId});
-   }else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status))reconnect(current)
-  })
- }
+ async function connect(player){identity=player;ready=false;const old=channel;channel=null;channelRealm='';if(old)await supabase.removeChannel(old);if(identity!==player)return;const current=supabase.channel('campus:main:v1',{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});channel=current;channelRealm='main';current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast('state',undefined,false,true)}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});current.subscribe(async state=>{if(channel!==current||disposed)return;if(state==='SUBSCRIBED'){retryAt=0;ready=true;const result=await current.track({connectionId,userId:player.id,name:player.displayName,state:{...readState(),connectionId,seq:++sequence}});if(channel!==current)return;if(result!=='ok'){reconnect(current);return}sync();lastSend=0;void broadcast('request-state',{connectionId});}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(state))reconnect(current)})}
  function update(dt,now){
   const player=window.noonsongPlayer;
   if(localAvatar&&player&&ownName!==player.displayName){if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}ownName=player.displayName;ownLabel=label(ownName.slice(0,24));scene.add(ownLabel)}
+  if(supabase&&player&&(!identity||player.id!==identity.id))void connect(player);
+  if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}
   const state=readState();
-  const targetRealm=realmChannel(state.realm);
-  if(supabase&&player&&(!identity||player.id!==identity.id||channelRealm!==targetRealm)&&connectingRealm!==targetRealm)void connect(player,targetRealm);
-  if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity,targetRealm)}
+  // The shared channel keeps currently-open production clients compatible.
+  // Realm filtering below still ensures campus and sky avatars never render
+  // into each other's world.
   if(ownLabel){ownLabel.position.copy(localAvatar.position);ownLabel.position.y+=5.45;keepNameLabelSize(ownLabel,ownLabel.position)}
   if(matdam&&!state.smoking){if(!endSent){endSent=true;void sendTargeted('matdam-end',matdam.partnerId)}endMatdamView();localAvatar.visible=true}
   if(matdam&&state.smoking)selfMatchActions.update(state,now,0,dt);else selfMatchActions.hide();
@@ -201,7 +178,7 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   });
  }
  function activeSwimmers(){const now=performance.now();return [...peers.values()].filter(peer=>peer.state?.swimming&&now-peer.last<5000).map(peer=>peer.state)}
- const heartbeat=setInterval(()=>{const now=performance.now();if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity,realmChannel(readState().realm))}else if(ready&&now-lastSend>=1000)void broadcast()},1000);
+ const heartbeat=setInterval(()=>{const now=performance.now();if(identity&&!ready&&retryAt&&now>=retryAt){retryAt=0;void connect(identity)}else if(ready&&now-lastSend>=1000)void broadcast()},1000);
  function dispose(){disposed=true;requestButton.remove();modal.remove();toast.remove();clearMatchTags();selfMatchActions.dispose();if(ownLabel){scene.remove(ownLabel);ownLabel.material.map.dispose();ownLabel.material.dispose()}identity=null;ready=false;if(channel)void supabase.removeChannel(channel);channel=null;for(const id of peers.keys())remove(id);clearInterval(heartbeat);window.removeEventListener('pagehide',dispose)}
  window.addEventListener('pagehide',dispose,{once:true});
  return {update:(dt,now)=>{update(dt,now);updateBenchAvatars()},dispose,occupiedSkyBeds,occupiedBenches,activeSwimmers,campusPlayers,toast:showToast,flush:()=>{lastAction='';void broadcast()}};
