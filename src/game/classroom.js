@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { createProfessor } from '../models/professor.js';
 import { createSongi } from '../models/songi.js';
 
 const isMobile=matchMedia('(hover:none) and (pointer:coarse)').matches;
@@ -34,7 +35,12 @@ export function startClassroom(game){
  // blocked footprint, while the gap before the next row stays walkable.
  for(const z of [-9,0,9])for(const x of [-11,11])desk(x,z);
  const podium=destructible(new T.Group(),{x:0,z:-13.4,w:2.25,d:1.25});podium.position.set(0,0,-13.4);scene.add(podium);add(new T.BoxGeometry(4.1,1.65,1.85),wood,0,.82,0,podium);add(new T.BoxGeometry(4.35,.2,2.05),cream,0,1.73,0,podium);
- const professor=new T.Group(),professorTarget=new T.Vector3(17.25,0,-15.3);professor.position.set(0,.05,-11.35);professor.rotation.y=Math.PI;scene.add(professor);add(new T.CylinderGeometry(.42,.58,1.75,12),mat('#655873'),0,1.1,0,professor);add(new T.SphereGeometry(.52,14,10),mat('#fff0df'),0,2.28,.05,professor);add(new T.SphereGeometry(.10,8,6),mat('#57486f'),-.18,2.34,.48,professor);add(new T.SphereGeometry(.10,8,6),mat('#57486f'),.18,2.34,.48,professor);add(new T.BoxGeometry(.78,.13,.12),mat('#45394f'),0,2.28,.54,professor);for(const side of [-1,1])add(new T.CapsuleGeometry(.12,.62,5,8),mat('#fff0df'),side*.53,1.35,0,professor).rotation.z=side*.18;
+ const professors=['woman','man'].map((variant,index)=>{
+  const model=createProfessor(variant);
+  model.position.set(index===0?-1.4:1.4,0,podium.position.z+2.55);
+  scene.add(model);
+  return {model,target:new T.Vector3(17.25,0,-15.3+index*.9)};
+ });
  let swingCount=0,professorPhase='waiting',won=false;
  const songi=createSongi();songi.position.set(0,.05,14);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
  // The bat's pivot is attached to Song-i's right arm, so walking and swing
@@ -50,10 +56,23 @@ export function startClassroom(game){
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
   for(const object of destructibles){if(object.userData.destroyed)continue;const delta=object.position.clone().sub(songi.position);delta.y=0;const distance=delta.length();if(distance>4.4)continue;delta.normalize();if(facing.dot(delta)<Math.cos(.72))continue;object.userData.destroyed=true;object.userData.destroyedAt=now;}
  }
+ const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
-  if(professorPhase==='waiting')return;
-  if(professorPhase==='shaking'){professor.rotation.z=Math.sin(now*.035)*.075;return}
-  professor.rotation.z=0;const delta=professorTarget.clone().sub(professor.position);delta.y=0;if(delta.length()<.45){professor.visible=false;professorPhase='gone';return}delta.normalize();professor.position.addScaledVector(delta,dt*7.5);professor.rotation.y=Math.atan2(delta.x,delta.z);
+  if(professorPhase==='waiting'||professorPhase==='gone')return;
+  for(const {model,target} of professors){
+   if(!model.visible)continue;
+   if(professorPhase==='shaking'){
+    model.rotation.z=Math.sin(now*.035+model.position.x)*.075;
+    continue;
+   }
+   model.rotation.z=0;
+   professorDirection.subVectors(target,model.position).setY(0);
+   if(professorDirection.length()<.45){model.visible=false;continue;}
+   professorDirection.normalize();
+   model.position.addScaledVector(professorDirection,dt*7.5);
+   model.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
+  }
+  if(professors.every(({model})=>!model.visible))professorPhase='gone';
  }
  function checkVictory(){if(won||!destructibles.every(object=>object.userData.destroyed))return;won=true;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!'}
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
