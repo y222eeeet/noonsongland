@@ -48,15 +48,29 @@ export function startClassroom(game){
  const professorTarget=new T.Vector3(17.25,0,-15.3);
  let swingCount=0,professorPhase='waiting',won=false;
  const songi=createSongi();songi.position.set(0,.05,14);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- // The bat's pivot is attached to Song-i's right arm, so walking and swing
- // poses move the hand and bat as a single object.
- const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');add(new T.CylinderGeometry(.16,.30,2.6,10),batWood,0,1.1,0,bat);add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,-.42,0,bat);bat.rotation.set(.18,0,-1.05);bat.position.set(.26,-.30,.06);songi.userData.parts.arm1.add(bat);
- const swingSweep=new T.Mesh(new T.RingGeometry(1.0,4.45,32,1,-.72,1.44),new T.MeshBasicMaterial({color:'#fff',transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide}));swingSweep.rotation.x=-Math.PI/2;swingSweep.visible=false;scene.add(swingSweep);
+ const swingDuration=310;
+ const swingArm=songi.userData.parts.arm1;
+ const hand=swingArm.children[0];
+ const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');
+ // Put the grip at the pivot so rotating the bat keeps it in Song-i's hand.
+ add(new T.CylinderGeometry(.30,.16,2.6,10),batWood,0,1.52,0,bat);
+ add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,0,0,bat);
+ bat.position.set(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
+ bat.rotation.set(.18,0,-1.05);
+ swingArm.add(bat);
+ const sweepMaterial=new T.MeshBasicMaterial({color:'#fff',transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide});
+ const swingSweep=new T.Mesh(new T.RingGeometry(1.0,4.45,32,1,-.72,1.44),sweepMaterial);
+ swingSweep.rotation.set(-Math.PI/2,0,Math.PI/2);
+ swingSweep.position.y=1.15;
+ swingSweep.visible=false;
+ songi.add(swingSweep);
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
  function swing(target){
-  const now=performance.now();if(now<swingingUntil||won)return;swingingUntil=now+310;swingCount++;
+  const now=performance.now();if(now<swingingUntil)return;swingingUntil=now+swingDuration;
+  if(won)return;
+  swingCount++;
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
@@ -92,7 +106,14 @@ export function startClassroom(game){
   if(isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
   if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
-  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310)),swingAmount=Math.sin((1-phase)*Math.PI);if(swingAmount>0){parts.arm1.rotation.x=-1.45*swingAmount;parts.arm1.rotation.z=-.62*swingAmount;bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount)}else{parts.arm1.rotation.z=0;bat.rotation.set(.18,0,-1.05)}swingSweep.visible=swingAmount>.04;if(swingSweep.visible){swingSweep.position.copy(songi.position);swingSweep.position.y=.09;swingSweep.rotation.y=songi.rotation.y-Math.PI/2;swingSweep.material.opacity=.28*swingAmount;swingSweep.scale.setScalar(1+swingAmount*.08)}
+  const progress=T.MathUtils.clamp(1-(swingingUntil-now)/swingDuration,0,1);
+  const swingAmount=now<swingingUntil?Math.sin(progress*Math.PI):0;
+  if(swingAmount>0)swingArm.rotation.x=-1.45*swingAmount;
+  swingArm.rotation.z=-.62*swingAmount;
+  bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount);
+  swingSweep.visible=swingAmount>.04;
+  sweepMaterial.opacity=.52*swingAmount;
+  swingSweep.scale.setScalar(1+swingAmount*.08);
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
