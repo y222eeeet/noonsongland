@@ -59,7 +59,8 @@ export function startClassroom(game){
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
-  for(const object of destructibles){if(object.userData.destroyed)continue;const delta=object.position.clone().sub(songi.position);delta.y=0;const distance=delta.length();if(distance>4.4)continue;delta.normalize();if(facing.dot(delta)<Math.cos(.72))continue;object.userData.destroyed=true;object.userData.destroyedAt=now;}
+  let broken=0;for(const object of destructibles){if(object.userData.destroyed)continue;const delta=object.position.clone().sub(songi.position);delta.y=0;const distance=delta.length();if(distance>4.4)continue;delta.normalize();if(facing.dot(delta)<Math.cos(.72))continue;object.userData.destroyed=true;object.userData.destroyedAt=now;impact(object.getWorldPosition(new T.Vector3()),object.userData.debrisColor);broken++;}
+  if(broken){shakeStrength=Math.min(.38,.14+broken*.07);shakeUntil=now+260;}
  }
  const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
@@ -91,7 +92,7 @@ export function startClassroom(game){
   if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
   const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310)),swingAmount=Math.sin((1-phase)*Math.PI);if(swingAmount>0){parts.arm1.rotation.x=-1.45*swingAmount;parts.arm1.rotation.z=-.62*swingAmount;bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount)}else{parts.arm1.rotation.z=0;bat.rotation.set(.18,0,-1.05)}
-  for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);
-  const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
+  for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
+  const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
 }
