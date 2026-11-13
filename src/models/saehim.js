@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {addSledBanner} from './sled-banner.js';
 import {ROUTES} from '../game/campus-routes-layout.js';
 
 export function addSaehimAndRoutes(scene,obstacles,M){
@@ -63,5 +64,6 @@ export function addSaehimAndRoutes(scene,obstacles,M){
   cap.rotation.z=guardAngle;
  }
  slope(ROUTES.ramp,M.path);
+ addSledBanner(group,obstacles);
  return {minX:-101,maxX:47,minZ:-70,maxZ:Math.max(ROUTES.ramp.z1,ROUTES.sledHill.z1)+2};
 }
