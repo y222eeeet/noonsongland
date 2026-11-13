@@ -27,10 +27,14 @@ export function startClassroom(game){
   const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0});table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
   const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72});chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
  }
- for(const z of [-10,-4,2,8])for(const x of [-12,-4,4,12])desk(x,z);
+ // Two wide columns keep the centre aisle open. A chair belongs to its desk's
+ // blocked footprint, while the gap before the next row stays walkable.
+ for(const z of [-9,0,9])for(const x of [-11,11])desk(x,z);
  const podium=destructible(new T.Group(),{x:0,z:-13.4,w:2.25,d:1.25});podium.position.set(0,0,-13.4);scene.add(podium);add(new T.BoxGeometry(4.1,1.65,1.85),wood,0,.82,0,podium);add(new T.BoxGeometry(4.35,.2,2.05),cream,0,1.73,0,podium);
  const songi=createSongi();songi.position.set(0,.05,14);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');add(new T.CylinderGeometry(.16,.30,2.6,10),batWood,0,1.1,0,bat);add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,-.42,0,bat);bat.rotation.z=-.45;bat.position.set(.86,1.7,.18);songi.add(bat);
+ // The bat's pivot is attached to Song-i's right arm, so walking and swing
+ // poses move the hand and bat as a single object.
+ const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');add(new T.CylinderGeometry(.16,.30,2.6,10),batWood,0,1.1,0,bat);add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,-.42,0,bat);bat.rotation.set(.18,0,-1.05);bat.position.set(.26,-.30,.06);songi.userData.parts.arm1.add(bat);
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
@@ -49,8 +53,8 @@ export function startClassroom(game){
   let walking=false;
   if(isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
   if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
-  songi.userData.animate?.(now/1000,'idle',0);if(walking){const swing=Math.sin(now*.011)*.55,parts=songi.userData.parts;parts.arm0.rotation.x=parts.leg1.rotation.x=swing;parts.arm1.rotation.x=parts.leg0.rotation.x=-swing}
-  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310));bat.rotation.z=-.45+Math.sin((1-phase)*Math.PI)*1.75;
+  songi.userData.animate?.(now/1000,'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
+  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310)),swingAmount=Math.sin((1-phase)*Math.PI);if(swingAmount>0){parts.arm1.rotation.x=-1.45*swingAmount;parts.arm1.rotation.z=-.62*swingAmount;bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount)}else{parts.arm1.rotation.z=0;bat.rotation.set(.18,0,-1.05)}
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}
   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
