@@ -29,9 +29,9 @@ export function startClassroom(game){
  const halfX=22,halfZ=17;
  add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
  add(new T.BoxGeometry(2.3,5.2,.18),wood,17.8,2.45,-halfZ+.24);
- const destructibles=[],obstacles=[];
- function destructible(group,bounds,color='#d7ad8c'){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);obstacles.push({group,...bounds});return group}
- function wallPanel(x,z,width){const panel=destructible(new T.Group(),{x,z,w:width/2,d:.35},'#eee0ea');panel.position.set(x,0,z);scene.add(panel);add(new T.BoxGeometry(width,9,.35),cream,0,4.3,0,panel);return panel}
+ const destructibles=[],victoryTargets=[],obstacles=[];
+ function destructible(group,bounds,color='#d7ad8c',required=true){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);if(required)victoryTargets.push(group);obstacles.push({group,...bounds});return group}
+ function wallPanel(x,z,width){const panel=destructible(new T.Group(),{x,z,w:width/2,d:.35},'#eee0ea',false);panel.position.set(x,0,z);scene.add(panel);add(new T.BoxGeometry(width,9,.35),cream,0,4.3,0,panel);return panel}
  wallPanel(-14,-halfZ,12);wallPanel(0,-halfZ,12);wallPanel(14,-halfZ,12);wallPanel(0,halfZ,halfX*2+1);
  const board=destructible(new T.Group(),{x:0,z:-halfZ+.42,w:5.3,d:.4},'#6f9686');board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
  function desk(x,z){
@@ -40,7 +40,7 @@ export function startClassroom(game){
  }
  // Two wide columns keep the centre aisle open. A chair belongs to its desk's
  // blocked footprint, while the gap before the next row stays walkable.
- for(const z of [-9,0,9])for(const x of [-11,11])desk(x,z);
+ for(const z of [-10,-4,2,8])for(const x of [-11,11])desk(x,z);
  const podium=destructible(new T.Group(),{x:0,z:-13.4,w:2.25,d:1.25});podium.position.set(0,0,-13.4);scene.add(podium);add(new T.BoxGeometry(4.1,1.65,1.85),wood,0,.82,0,podium);add(new T.BoxGeometry(4.35,.2,2.05),cream,0,1.73,0,podium);
  const professor=createProfessor(Math.random()<.5?'woman':'man');
  professor.position.set(podium.position.x,0,(podium.position.z+board.position.z)/2);
@@ -51,6 +51,7 @@ export function startClassroom(game){
  // The bat's pivot is attached to Song-i's right arm, so walking and swing
  // poses move the hand and bat as a single object.
  const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');add(new T.CylinderGeometry(.16,.30,2.6,10),batWood,0,1.1,0,bat);add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,-.42,0,bat);bat.rotation.set(.18,0,-1.05);bat.position.set(.26,-.30,.06);songi.userData.parts.arm1.add(bat);
+ const swingSweep=new T.Mesh(new T.RingGeometry(1.0,4.45,32,1,-.72,1.44),new T.MeshBasicMaterial({color:'#fff',transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide}));swingSweep.rotation.x=-Math.PI/2;swingSweep.visible=false;scene.add(swingSweep);
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
@@ -80,7 +81,7 @@ export function startClassroom(game){
   professor.position.addScaledVector(professorDirection,dt*7.5);
   professor.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
  }
- function checkVictory(){if(won||!destructibles.every(object=>object.userData.destroyed))return;won=true;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!'}
+ function checkVictory(){if(won||!victoryTargets.every(object=>object.userData.destroyed))return;won=true;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!'}
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
  canvas.addEventListener('pointermove',event=>{if(!isMobile||!canvasPress)return;const dx=event.clientX-canvasPress.lastX,dy=event.clientY-canvasPress.lastY;if(Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)>8)canvasPress.dragged=true;if(canvasPress.dragged){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.45,mobilePitch-dy*.006));canvasPress.lastX=event.clientX;canvasPress.lastY=event.clientY}});
@@ -91,7 +92,7 @@ export function startClassroom(game){
   if(isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
   if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
-  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310)),swingAmount=Math.sin((1-phase)*Math.PI);if(swingAmount>0){parts.arm1.rotation.x=-1.45*swingAmount;parts.arm1.rotation.z=-.62*swingAmount;bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount)}else{parts.arm1.rotation.z=0;bat.rotation.set(.18,0,-1.05)}
+  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310)),swingAmount=Math.sin((1-phase)*Math.PI);if(swingAmount>0){parts.arm1.rotation.x=-1.45*swingAmount;parts.arm1.rotation.z=-.62*swingAmount;bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount)}else{parts.arm1.rotation.z=0;bat.rotation.set(.18,0,-1.05)}swingSweep.visible=swingAmount>.04;if(swingSweep.visible){swingSweep.position.copy(songi.position);swingSweep.position.y=.09;swingSweep.rotation.y=songi.rotation.y-Math.PI/2;swingSweep.material.opacity=.28*swingAmount;swingSweep.scale.setScalar(1+swingAmount*.08)}
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
