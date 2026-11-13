@@ -2,7 +2,7 @@ import * as T from 'three';
 
 // Register each landmark's footprint so later buildings grow the same world.
 export function addJinriHall(scene, obstacles, materials) {
-  const group=new T.Group(); group.position.set(-51,10.6,-27);group.scale.set(2.05,1,1.2);scene.add(group);
+  const group=new T.Group(); group.position.set(-51,10.6,-27);group.scale.set(2.05,1,1.2);group.userData.classroomEntry=true;scene.add(group);
   const make=(geometry,material,x,y,z)=>{const m=new T.Mesh(geometry,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;group.add(m);return m;};
   const wall=materials.cream, blue=new T.MeshStandardMaterial({color:'#82b5cf',roughness:.6});
   const glass=new T.MeshStandardMaterial({color:'#83bed5',roughness:.4,metalness:.08});

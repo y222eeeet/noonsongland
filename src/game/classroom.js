@@ -1,0 +1,48 @@
+import * as T from 'three';
+import { createSongi } from '../models/songi.js';
+
+const isMobile=matchMedia('(hover:none) and (pointer:coarse)').matches;
+
+export function startClassroom(game){
+ game.replaceChildren();
+ const canvas=document.createElement('canvas'),back=document.createElement('button'),hint=document.createElement('div'),joy=document.createElement('div'),stick=document.createElement('div');
+ canvas.style.cssText='display:block;width:100%;height:100%;touch-action:none';
+ back.textContent='← 캠퍼스로 돌아가기';back.style.cssText="position:absolute;z-index:2;top:max(16px,env(safe-area-inset-top));left:14px;padding:10px 14px;border:1px solid #ffffffcc;border-radius:999px;background:#fffaf8e8;color:#5f5473;font:800 13px ui-rounded,'Apple SD Gothic Neo',sans-serif";
+ hint.textContent=isMobile?'바닥을 눌러 배트를 휘두르세요':'WASD · 방향키로 이동 / Space로 배트 휘두르기';hint.style.cssText="position:absolute;z-index:2;right:14px;bottom:max(18px,env(safe-area-inset-bottom));left:14px;padding:10px 13px;border-radius:14px;background:#fffaf8d9;color:#5f5473;font:800 12px ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;pointer-events:none";
+ joy.style.cssText='position:absolute;z-index:2;bottom:max(28px,calc(env(safe-area-inset-bottom) + 12px));left:23px;width:104px;height:104px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff36;touch-action:none;display:none';stick.style.cssText='position:absolute;top:27px;left:27px;width:46px;height:46px;border:2px solid #ffffffaa;border-radius:50%;background:#b596d4aa';joy.append(stick);if(isMobile)joy.style.display='block';game.append(canvas,back,hint,joy);
+ back.addEventListener('click',()=>location.assign('/'));
+
+ const scene=new T.Scene();scene.background=new T.Color('#eee8f2');scene.fog=new T.Fog('#eee8f2',20,55);
+ const camera=new T.PerspectiveCamera(52,1,.1,100),renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;
+ scene.add(new T.HemisphereLight('#fff8ed','#887a9c',2.3));const sun=new T.DirectionalLight('#fff2d7',2.7);sun.position.set(-8,15,8);scene.add(sun);
+ const mat=(color,roughness=.82)=>new T.MeshStandardMaterial({color,roughness});
+ const cream=mat('#fff8ed'),wall=mat('#e7dced'),floorMat=mat('#cdbba7'),wood=mat('#b5896d'),chairMat=mat('#b99ddd'),boardMat=mat('#496f61');
+ const add=(geometry,material,x,y,z,parent=scene)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);parent.add(mesh);return mesh};
+ add(new T.BoxGeometry(23,.35,18),floorMat,0,-.2,0);add(new T.BoxGeometry(23,9,.35),cream,0,4.3,-8.8);add(new T.BoxGeometry(23,9,.35),cream,0,4.3,8.8);add(new T.BoxGeometry(.35,9,18),wall,-11.3,4.3,0);add(new T.BoxGeometry(.35,9,18),wall,11.3,4.3,0);
+ add(new T.BoxGeometry(8.2,3.2,.16),boardMat,0,5.35,-8.58);add(new T.BoxGeometry(8.7,.22,.45),wood,0,3.62,-8.3);const door=add(new T.BoxGeometry(2.2,5.2,.18),wood,8.4,2.45,-8.56);door.userData.classroomDoor=true;
+ const destructibles=[];
+ function destructible(group){group.userData.destroyed=false;destructibles.push(group);return group}
+ function desk(x,z){const group=destructible(new T.Group());group.position.set(x,0,z);scene.add(group);add(new T.BoxGeometry(2.05,.22,1.22),wood,0,1.52,0,group);for(const sx of [-.78,.78])for(const sz of [-.42,.42])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,group);add(new T.BoxGeometry(.86,.18,.72),chairMat,0,.83,1.22,group);add(new T.BoxGeometry(.86,.95,.13),chairMat,0,1.28,1.52,group);return group}
+ for(const z of [-4.5,-1.5,1.5,4.5])for(const x of [-5.2,-1.8,1.8,5.2])desk(x,z);
+ const podium=destructible(new T.Group());podium.position.set(0,0,-6.9);scene.add(podium);add(new T.BoxGeometry(3.2,1.65,1.35),wood,0,.82,0,podium);add(new T.BoxGeometry(3.45,.2,1.55),cream,0,1.73,0,podium);
+ const songi=createSongi();songi.position.set(0,.05,7);scene.add(songi);songi.userData.animate?.(0,'idle',0);
+ const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');add(new T.CylinderGeometry(.16,.30,2.6,10),batWood,0,1.1,0,bat);add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,-.42,0,bat);bat.rotation.z=-.45;bat.position.set(.86,1.7,.18);songi.add(bat);
+ const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),right=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2();let swingingUntil=0,joyPointer=null,canvasPress=null;
+ function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
+ function swing(target){
+  const now=performance.now();if(now<swingingUntil)return;swingingUntil=now+310;
+  if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
+  const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
+  for(const object of destructibles){if(object.userData.destroyed)continue;const delta=object.position.clone().sub(songi.position);delta.y=0;const distance=delta.length();if(distance>4.4)continue;delta.normalize();if(facing.dot(delta)<Math.cos(.72))continue;object.userData.destroyed=true;object.userData.destroyedAt=now;}
+ }
+ addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
+ canvas.addEventListener('pointerdown',event=>canvasPress={x:event.clientX,y:event.clientY});canvas.addEventListener('pointerup',event=>{if(!isMobile||!canvasPress||Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)>12)return;const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(destructibles,true)[0];swing(hit?.point);canvasPress=null});
+ joy.addEventListener('pointerdown',event=>{joyPointer=event.pointerId;joy.setPointerCapture(event.pointerId)});joy.addEventListener('pointermove',event=>{if(event.pointerId!==joyPointer)return;const rect=joy.getBoundingClientRect();let x=(event.clientX-(rect.left+rect.width/2))/42,z=(event.clientY-(rect.top+rect.height/2))/42;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length}moveVector.set(x,z);stick.style.transform=`translate(${x*27}px,${z*27}px)`});['pointerup','pointercancel'].forEach(type=>joy.addEventListener(type,event=>{if(event.pointerId===joyPointer){joyPointer=null;moveVector.set(0,0);stick.style.transform=''}}));
+ const clock=new T.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04),now=performance.now();
+  const x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+moveVector.x,z=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+moveVector.y;
+  if(Math.hypot(x,z)>.08){forward.set(x,0,-z).normalize();candidate.copy(songi.position).addScaledVector(forward,dt*5.1);candidate.x=T.MathUtils.clamp(candidate.x,-9.8,9.8);candidate.z=T.MathUtils.clamp(candidate.z,-7.5,7.6);songi.position.copy(candidate);songi.rotation.y=Math.atan2(forward.x,forward.z);songi.userData.animate?.(now/1000,'idle',0)}
+  const phase=Math.max(0,Math.min(1,(swingingUntil-now+310)/310));bat.rotation.z=-.45+Math.sin((1-phase)*Math.PI)*1.75;
+  for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}
+  const songiForward=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));camera.position.copy(songi.position).addScaledVector(songiForward,-12);camera.position.y+=10;camera.lookAt(songi.position.x,songi.position.y+2.3,songi.position.z);renderer.render(scene,camera);
+ }frame();
+}

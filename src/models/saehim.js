@@ -3,7 +3,7 @@ import {addSledBanner} from './sled-banner.js';
 import {ROUTES} from '../game/campus-routes-layout.js';
 
 export function addSaehimAndRoutes(scene,obstacles,M){
- const group=new T.Group();group.name='saehim-and-connections';scene.add(group);
+ const group=new T.Group();group.name='saehim-and-connections';group.userData.classroomEntry=true;scene.add(group);
  function mesh(g,m,x,y,z,parent=group){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o;}
  // Remove the existing terrace's support only beneath the new stair opening.
  const cut=ROUTES.stairs;

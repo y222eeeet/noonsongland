@@ -40,6 +40,10 @@ function prepareSmokeExhale(group,seconds){const amount=Math.min(1,Math.max(0,se
 function updateSmokeExhale(group,age){const p=group.userData.exhale;group.scale.setScalar(1);group.children.forEach((puff,i)=>{const life=age-puff.userData.delay;puff.visible=i<p.count&&life>=0&&life<1.6;if(!puff.visible)return;puff.position.set(Math.sin(i*2.4)*(.12+life*.16),life*.75,life*.45);puff.scale.setScalar(p.radius/.23*(.45+life*.7));puff.material.opacity=(.25+.18*(p.count/24))*(1-life/1.6)})}
 import { addMyungshinHall, addRearGate, addNorthSmokingArea } from './src/models/myungshin.js';
 import { createSookmyungHedge } from './src/models/sookmyung-hedge.js';
+if(location.pathname==='/classroom'){
+ const { startClassroom }=await import('./src/game/classroom.js');
+ startClassroom(document.querySelector('#game'));
+}else{
 document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('copy',e=>e.preventDefault());
 document.addEventListener('cut',e=>e.preventDefault());
@@ -101,6 +105,7 @@ const lowerFlight=new T.Group(),upperFlight=new T.Group();scene.add(lowerFlight,
 // Close landmark so Soonheongwan and its staircase always fill the forward view.
 const soon=new T.Group();soon.position.set(0,0,-5);scene.add(soon);const sp=(g,m,v)=>q(g,m,v,soon);sp(new T.BoxGeometry(16,7.4,1.4),M.cream,[0,5.2,0]);sp(new T.BoxGeometry(17,.45,1.7),M.lav,[0,9.1,0]);sp(new T.BoxGeometry(18,.28,1.9),M.pink,[0,9.45,0]);sp(new T.BoxGeometry(5.4,3.4,.2),M.dark,[0,2.35,.82]);[-2.1,2.1].forEach(x=>sp(new T.BoxGeometry(.48,4.8,.3),M.blue,[x,2.7,.9]));for(let row=0;row<3;row++)for(let x=-6.6;x<=6.6;x+=1.9)sp(new T.BoxGeometry(1.05,.78,.1),M.window,[x,4.45+row*1.38,.79]);for(let i=0;i<8;i++)sp(new T.BoxGeometry(10.5+i*1.2,.32,1.05),M.cream,[0,.16+i*.32,1.3+i*.34]);const hedge=new T.Group();hedge.position.set(0,2.7,1.4);soon.add(hedge);for(let y=0;y<5;y++)for(let x=-2;x<=2;x++)if(x===-2||x===2||y===0||y===4||x===0)q(new T.SphereGeometry(.25,8,7),M.hedge,[x*.32,.12,y*.28],hedge);col.push({x:0,z:-5,w:9,h:3.5});
 // Place the landmark directly at the end of the central path; its broad stairway stays walkable.
+soon.userData.classroomEntry=true;
 soon.position.set(0,7.2,-27);soon.scale.set(4,2,2);hedge.visible=false;col.pop();soon.children.forEach(o=>{if(o.isMesh&&o.geometry.parameters.height===.32)o.visible=false;});col.push({x:0,z:-27,w:32.5,h:1.6});function dot(x,z){const d=q(new T.SphereGeometry(.38,10,8),M.hedge,[x,.35,z]);d.scale.y=.68}const glyph=[['111','101','111','101','101'],['101','101','111','101','111']];glyph.forEach((g,i)=>g.forEach((r,y)=>[...r].forEach((v,x)=>v==='1'&&dot(-2.15+i*2.55+x*.42,-8+y*.43))));
 function tree(x,z,s=1,pink=false){return;const g=new T.Group();g.position.set(x,0,z);g.scale.setScalar(s);scene.add(g);q(new T.CylinderGeometry(.25,.34,2.2,10),M.trunk,[0,1.05,0],g);const lm=mat(pink?'#f2b8cc':'#a5d9aa');[[0,2.55,0,1.18],[-.5,2.82,.1,.82],[.52,2.75,0,.9],[.08,3.28,0,.76]].forEach(v=>q(new T.DodecahedronGeometry(v[3],1),lm,v.slice(0,3),g));col.push({x,z,r:.85*s})} [[-9,5,1.18], [9,4,1.15,1],[-10,-5,1.05,1],[10,-5,1.08],[-6,-10,.8],[6,-10,.8,1],[-12,11,.92],[12,10,.9,1]].forEach(v=>tree(v[0],v[1],v[2],v[3]));
 function bench(x,z,r){return;const g=new T.Group();g.position.set(x,0,z);g.rotation.y=r;scene.add(g);q(new T.BoxGeometry(2.2,.18,.46),M.pink,[0,.76,0],g);const back=q(new T.BoxGeometry(2.2,.18,.38),M.lav,[0,1.08,.2],g);back.rotation.x=.22;[-.78,.78].forEach(a=>q(new T.CylinderGeometry(.09,.12,.75,8),M.trunk,[a,.36,0],g));col.push({x,z,w:1.35,h:.5})}bench(-10,8,.2);bench(10,8,-.2);bench(-12,3,Math.PI/2);bench(12,3,Math.PI/2);
@@ -164,6 +169,11 @@ function surfaceHeight(x,z,realm){
 }
 // Continuous beveled Songi avatar, shared front and rear geometry.
 const p=createSongi();p.rotation.y=Math.PI;const startArea=new URLSearchParams(location.search).get('area');p.position.set(startArea==='guestbook'?-54:startArea==='myungshin'?-58:startArea==='jinri'?-51:0,0,startArea==='guestbook'?4:startArea==='myungshin'?4:startArea==='jinri'?-15:8);if(startArea==='guestbook')p.rotation.y=Math.PI/2;scene.add(p);const part=p.userData.parts;
+// Every campus building leads to the same private classroom instance.
+const classroomRay=new T.Raycaster(),classroomPointer=new T.Vector2();let classroomPress;
+function classroomBuilding(object){for(let current=object;current;current=current.parent)if(current.userData.classroomEntry)return current;return null}
+renderer.domElement.addEventListener('pointerdown',event=>{classroomPress={x:event.clientX,y:event.clientY}});
+renderer.domElement.addEventListener('pointerup',event=>{if(!classroomPress||Math.hypot(event.clientX-classroomPress.x,event.clientY-classroomPress.y)>8||skyMode||!canEnterAction('classroom'))return;const rect=renderer.domElement.getBoundingClientRect();classroomPointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);classroomRay.setFromCamera(classroomPointer,camera);const hit=classroomRay.intersectObjects(scene.children,true).find(result=>classroomBuilding(result.object));if(hit)location.assign('/classroom')});
 // Sledding is one committed run: from the upper deck, selecting the snow
 // immediately places Song-i on the start line, then rides to the finish.
 const sledButton=document.createElement('button');sledButton.type='button';sledButton.hidden=true;sledButton.textContent='썰매타기';sledButton.style.cssText="position:absolute;z-index:9;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);padding:12px 18px;border:2px solid #fff;border-radius:999px;background:#83b7d8;color:#fff;font:800 15px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #456f8a44";game.append(sledButton);
@@ -591,5 +601,6 @@ addEventListener('resize',resize);resize();
  if(sittingBench&&!smokeMode){camera.position.copy(p.position).addScaledVector(forward,9);camera.position.y+=4.2;camera.lookAt(p.position.x,p.position.y+2.2,p.position.z)}
  updateDayNight(Date.now());updateWorldShadows(p.position);renderer.render(scene,camera);dismissLoading();
 })();
+}
 }
 </script></main></body></html>

@@ -1,7 +1,7 @@
 import * as T from 'three';
 
 export function addMyungshinHall(world, obstacles, M){
-  const scene=new T.Group();scene.position.set(-27,0,21);world.add(scene);
+  const scene=new T.Group();scene.position.set(-27,0,21);scene.userData.classroomEntry=true;world.add(scene);
   const obstacleStart=obstacles.length;
   const campusY=10.78;
   const mat=c=>new T.MeshStandardMaterial({color:c,roughness:.85});
