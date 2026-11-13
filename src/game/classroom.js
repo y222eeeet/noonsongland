@@ -47,7 +47,8 @@ export function startClassroom(game){
  scene.add(professor);
  const professorTarget=new T.Vector3(17.25,0,-15.3);
  let swingCount=0,professorPhase='waiting',won=false;
- const songi=createSongi();songi.position.set(0,.05,14);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
+ // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
+ const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
  const swingDuration=310;
  const swingArm=songi.userData.parts.arm1;
  const hand=swingArm.children[0];
