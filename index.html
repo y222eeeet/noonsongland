@@ -26,6 +26,7 @@ import { addCampusFurniture } from './src/models/campus-furniture.js';
 import { addSaehimAndRoutes } from './src/models/saehim.js';
 import { createSledParty } from './src/models/sled-party.js';
 import { createSled, placeSled, SLED_RIDER_OFFSET, createSledMedal, clapSledRider, resetSledClap } from './src/models/sled.js';
+import { addSledSnow } from './src/models/sled-snow.js';
 import { addMovingWalkArrows } from './src/models/moving-walk.js';
 import { extendSmokingBoundary } from './src/models/campus-boundary.js';
 import { addCampusPond } from './src/models/campus-pond.js';
@@ -148,6 +149,7 @@ addCampusFurniture(scene,col,M);
 expandWorld(addSaehimAndRoutes(scene,col,M));
 const sledSlope=scene.getObjectByName('sled-slope');
 const updateMovingWalkArrows=addMovingWalkArrows(scene);
+const updateSledSnow=addSledSnow(scene);
 extendSmokingBoundary(scene,col,M);
 const worldFloor=unifyWorldFloors(scene,M);
 const campusPond=addCampusPond(scene,M);
@@ -549,6 +551,7 @@ addEventListener('resize',resize);resize();
  if(wantsToWalk){walking=move(forward.x*drive*4.2*dt,forward.z*drive*4.2*dt,dt);time+=walking?dt*10:dt*2}
  else {if(!sledActive&&!skyMode&&onMovingWalk(p.position.x,p.position.z))move(0,0,dt);time+=dt*2}
  updateMovingWalkArrows(dt);
+ updateSledSnow(dt,!skyMode&&!layoutView);
  const held=inhaling?(now-inhaleStart)/1000:0;
  if(inhaling){const stage=held>=20?3:held>=5?2:1;sighStatus.textContent=stage===3?'들이마시는 중… 3단계 · 오래 참았어요':stage===2?'들이마시는 중… 2단계 · 큰 한숨':'들이마시는 중… 1단계'}
  const exhale=Math.max(0,(exhaleUntil-now)/700),puff=inhaling?Math.min(held/20,.22):exhale*.22;
