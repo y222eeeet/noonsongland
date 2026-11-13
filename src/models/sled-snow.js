@@ -6,7 +6,7 @@ const fallHeight=9;
 export function addSledSnow(scene) {
  const {ramp,sledHill}=ROUTES;
  const flakes=[ramp,sledHill].flatMap(({x0,x1,z0,z1})=>
-  Array.from({length:Math.round((x1-x0)*(z1-z0)*.45)},()=>{
+  Array.from({length:Math.round((x1-x0)*(z1-z0)*.225)},()=>{
    const drift=.24;
    const x=T.MathUtils.randFloat(x0+drift,x1-drift);
    const z=T.MathUtils.randFloat(z0+drift,z1-drift);
@@ -30,7 +30,7 @@ export function addSledSnow(scene) {
  positions.setUsage(T.DynamicDrawUsage);
  const geometry=new T.BufferGeometry();
  geometry.setAttribute('position',positions);
- const material=new T.PointsMaterial({map:texture,size:.20,transparent:true,depthWrite:false,opacity:.86});
+ const material=new T.PointsMaterial({map:texture,size:.60,transparent:true,depthWrite:false,opacity:.86});
  const snow=new T.Points(geometry,material);
  snow.name='sled-route-snow';
  snow.frustumCulled=false;
