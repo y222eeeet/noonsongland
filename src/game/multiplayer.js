@@ -132,7 +132,10 @@ export function createMultiplayer(scene, readState, surfaceHeight, bounds, local
   if(switching)clearPeers();
   if(old)await supabase.removeChannel(old);
   if(disposed||identity!==player||connectingRealm!==targetRealm)return;
-  const current=supabase.channel(`noonsong:${targetRealm}:v1`,{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});
+ // Keep the long-lived campus channel name so an already-open production tab
+ // stays visible during a rollout. Sky still gets its own isolated channel.
+ const channelName=targetRealm==='sky'?'sky:main:v1':'campus:main:v1';
+ const current=supabase.channel(channelName,{config:{private:true,presence:{key:connectionId},broadcast:{self:false,ack:false}}});
   channel=current;
   current.on('presence',{event:'sync'},sync).on('broadcast',{event:'state'},({payload})=>receive(payload)).on('broadcast',{event:'request-state'},()=>{lastSend=0;void broadcast('state',undefined,false,true)}).on('broadcast',{event:'matdam-request'},({payload})=>receiveRequest(payload)).on('broadcast',{event:'matdam-accept'},({payload})=>handleAccept(payload)).on('broadcast',{event:'matdam-decline'},({payload})=>{if(payload?.to===connectionId)showToast('혼자 있고 싶대요.')}).on('broadcast',{event:'matdam-end'},({payload})=>handleEnd(payload)).on('system',{},message=>{if(message.status==='error')reconnect(current)});
   current.subscribe(async status=>{
