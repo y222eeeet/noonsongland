@@ -38,9 +38,9 @@ export function startClassroom(game){
   const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
   const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
  }
- // Two wide columns keep the centre aisle open. A chair belongs to its desk's
- // blocked footprint, while the gap before the next row stays walkable.
- for(const z of [-10,-4,2,8])for(const x of [-11,11])desk(x,z);
+ // Four-by-four desk blocks: rows remain separated by a walkable gap after
+ // each chair, and the generous column spacing leaves routes between blocks.
+ for(const z of [-10,-4,2,8])for(const x of [-15,-5,5,15])desk(x,z);
  const podium=destructible(new T.Group(),{x:0,z:-13.4,w:2.25,d:1.25});podium.position.set(0,0,-13.4);scene.add(podium);add(new T.BoxGeometry(4.1,1.65,1.85),wood,0,.82,0,podium);add(new T.BoxGeometry(4.35,.2,2.05),cream,0,1.73,0,podium);
  const professor=createProfessor(Math.random()<.5?'woman':'man');
  professor.position.set(podium.position.x,0,(podium.position.z+board.position.z)/2);
