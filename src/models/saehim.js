@@ -3,7 +3,7 @@ import {addSledBanner} from './sled-banner.js';
 import {ROUTES} from '../game/campus-routes-layout.js';
 
 export function addSaehimAndRoutes(scene,obstacles,M){
- const group=new T.Group();group.name='saehim-and-connections';group.userData.classroomEntry=true;scene.add(group);
+ const group=new T.Group();group.name='saehim-and-connections';scene.add(group);
  function mesh(g,m,x,y,z,parent=group){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o;}
  // Remove the existing terrace's support only beneath the new stair opening.
  const cut=ROUTES.stairs;
@@ -18,7 +18,7 @@ export function addSaehimAndRoutes(scene,obstacles,M){
  upperPatch(ROUTES.smokingWalk);upperPatch(ROUTES.southCourt);upperPatch(ROUTES.southCourtExtension);
  const court=ROUTES.southCourt;
  mesh(new T.BoxGeometry(30,10.74,court.z1-court.z0),M.cream,-62,5.23,(court.z0+court.z1)/2);
- const hall=new T.Group();hall.name='saehim-hall';hall.position.set(-73,ROUTES.upper,33);group.add(hall);
+ const hall=new T.Group();hall.userData.classroomEntry=true;hall.name='saehim-hall';hall.position.set(-73,ROUTES.upper,33);group.add(hall);
  const glass=new T.MeshStandardMaterial({color:'#8ebbc9',roughness:.5,metalness:.05});glass.userData.campusWindow=true;
  mesh(new T.BoxGeometry(6.8,10.8,25),M.cream,0,5.4,0,hall);
  mesh(new T.BoxGeometry(7.6,.45,25.8),M.lav,0,11.0,0,hall);

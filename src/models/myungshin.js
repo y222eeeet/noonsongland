@@ -1,7 +1,7 @@
 import * as T from 'three';
 
 export function addMyungshinHall(world, obstacles, M){
-  const scene=new T.Group();scene.position.set(-27,0,21);scene.userData.classroomEntry=true;world.add(scene);
+  const scene=new T.Group();scene.position.set(-27,0,21);world.add(scene);
   const obstacleStart=obstacles.length;
   const campusY=10.78;
   const mat=c=>new T.MeshStandardMaterial({color:c,roughness:.85});
@@ -13,7 +13,7 @@ export function addMyungshinHall(world, obstacles, M){
     const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;const sign=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:t}),x,y,z);sign.rotation.y=rotation;sign.castShadow=sign.receiveShadow=false;
   }
   // A north-south wing, perpendicular to Jinri's east-west elevation.
-  const hall=new T.Group();hall.position.set(-46,campusY,-17);scene.add(hall);
+  const hall=new T.Group();hall.userData.classroomEntry=true;hall.position.set(-46,campusY,-17);scene.add(hall);
   mesh(new T.BoxGeometry(6.8,11,24),M.cream,0,5.5,0,hall);
   mesh(new T.BoxGeometry(7.6,.55,25),roof,0,11.2,0,hall);
   mesh(new T.BoxGeometry(5.4,.38,23.5),M.path,0,11.65,0,hall);
