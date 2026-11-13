@@ -20,12 +20,30 @@ export function startClassroom(game){
  const cream=mat('#fff8ed'),wall=mat('#e7dced'),floorMat=mat('#cdbba7'),wood=mat('#b5896d'),chairMat=mat('#b99ddd'),boardMat=mat('#496f61');
  const add=(geometry,material,x,y,z,parent=scene)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);parent.add(mesh);return mesh};
  const dustGeometry=new T.SphereGeometry(.13,8,6),impactBursts=[];let shakeUntil=0,shakeStrength=0;
- function impact(position,color='#d7ad8c'){
+ function impact(position,color,now){
   const burst=new T.Group(),material=new T.MeshBasicMaterial({color,transparent:true,opacity:.78,depthWrite:false});burst.position.copy(position);burst.position.y+=1;scene.add(burst);
   for(let i=0;i<11;i++){const puff=new T.Mesh(dustGeometry,material);const angle=i/11*Math.PI*2+Math.random()*.35,speed=1.4+Math.random()*2.3;puff.userData.velocity=new T.Vector3(Math.cos(angle)*speed,.7+Math.random()*2.1,Math.sin(angle)*speed);puff.scale.setScalar(.55+Math.random()*.8);burst.add(puff)}
-  impactBursts.push({burst,material,started:performance.now()});
+  const flashMaterial=new T.SpriteMaterial({map:glintTexture,color:'#fff8ff',transparent:true,depthWrite:false});
+  const flash=new T.Sprite(flashMaterial);
+  flash.scale.setScalar(1.35);burst.add(flash);
+  impactBursts.push({burst,material,flash,started:now});
  }
- function updateImpacts(now,dt){for(let i=impactBursts.length-1;i>=0;i--){const item=impactBursts[i],age=(now-item.started)/1000;if(age>.72){scene.remove(item.burst);item.material.dispose();impactBursts.splice(i,1);continue}item.material.opacity=.78*(1-age/.72);item.burst.children.forEach(puff=>{puff.position.addScaledVector(puff.userData.velocity,dt);puff.userData.velocity.y-=dt*5.5;puff.scale.multiplyScalar(1+dt*.7)})}}
+ function updateImpacts(now,dt){
+  for(let i=impactBursts.length-1;i>=0;i--){
+   const {burst,material,flash,started}=impactBursts[i],age=(now-started)/1000;
+   if(age>.72){
+    scene.remove(burst);material.dispose();flash.material.dispose();impactBursts.splice(i,1);continue;
+   }
+   material.opacity=.78*(1-age/.72);
+   flash.material.opacity=Math.max(0,1-age/.12);
+   flash.scale.setScalar(1.35+Math.min(age,.12)*4);
+   for(const puff of burst.children){
+    if(puff===flash)continue;
+    puff.position.addScaledVector(puff.userData.velocity,dt);
+    puff.userData.velocity.y-=dt*5.5;puff.scale.multiplyScalar(1+dt*.7);
+   }
+  }
+ }
  const halfX=22,halfZ=17;
  add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
  add(new T.BoxGeometry(2.3,5.2,.18),wood,17.8,2.45,-halfZ+.24);
@@ -79,18 +97,50 @@ export function startClassroom(game){
  swingSweep.position.y=1.61;
  swingSweep.visible=false;
  songi.add(swingSweep);
+ const glintCanvas=document.createElement('canvas');
+ glintCanvas.width=glintCanvas.height=64;
+ const glintContext=glintCanvas.getContext('2d');
+ glintContext.fillStyle='#fff';
+ glintContext.beginPath();
+ for(const [x,y] of [[32,1],[39,25],[63,32],[39,39],[32,63],[25,39],[1,32],[25,25]])glintContext.lineTo(x,y);
+ glintContext.closePath();glintContext.fill();
+ const glintTexture=new T.CanvasTexture(glintCanvas);
+ const glints=['#ffffff','#e5caff','#ffffff'].map(color=>{
+  const glint=new T.Sprite(new T.SpriteMaterial({map:glintTexture,color,transparent:true,depthWrite:false}));
+  glint.visible=false;songi.add(glint);
+  return glint;
+ });
+ const tipGeometry=trailGeometry.clone();
+ const tipPoints=tipGeometry.attributes.position,tipColors=tipGeometry.attributes.color;
+ for(let i=0;i<=trailSegments;i++){
+  const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
+  for(const [edge,radius] of [2.74,2.85].entries()){
+   tipPoints.setXYZ(i*2+edge,swingArm.position.x+Math.sin(angle)*radius+Math.cos(angle)*bat.position.x,
+    swingArm.position.y+bat.position.y+.025,Math.cos(angle)*radius-Math.sin(angle)*bat.position.x);
+  }
+ }
+ const tipTrail=new T.Mesh(tipGeometry,sweepMaterial);
+ tipTrail.visible=false;songi.add(tipTrail);
+ const hitStop=55,hitProgress=.385;
+ let pendingHits=[],hitAt=0,releaseAt=0;
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
  function swing(target){
-  const now=performance.now();if(now<swingingUntil)return;swingingUntil=now+swingDuration;
+  const now=performance.now();if(now<swingingUntil)return;swingingUntil=now+swingDuration;releaseAt=0;
   if(won)return;
   swingCount++;
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
-  let broken=0;for(const object of destructibles){if(object.userData.destroyed)continue;const delta=object.position.clone().sub(songi.position);delta.y=0;const distance=delta.length();if(distance>4.4)continue;delta.normalize();if(facing.dot(delta)<Math.cos(.72))continue;object.userData.destroyed=true;object.userData.destroyedAt=now;impact(object.getWorldPosition(new T.Vector3()),object.userData.debrisColor);broken++;}
-  if(broken){shakeStrength=Math.min(.38,.14+broken*.07);shakeUntil=now+260;}
+  pendingHits=destructibles.filter(object=>{
+   if(object.userData.destroyed)return false;
+   const delta=object.position.clone().sub(songi.position);delta.y=0;
+   return delta.length()<=4.4&&facing.dot(delta.normalize())>=Math.cos(.72);
+  });
+  hitAt=now+swingDuration*hitProgress;
+  releaseAt=pendingHits.length?hitAt+hitStop:0;
+  if(releaseAt)swingingUntil+=hitStop;
  }
  const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
@@ -117,13 +167,23 @@ export function startClassroom(game){
  canvas.addEventListener('pointerup',event=>{if(!isMobile||!canvasPress||canvasPress.dragged){canvasPress=null;return}const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(destructibles,true)[0];swing(hit?.point);canvasPress=null});
  joy.addEventListener('pointerdown',event=>{joyPointer=event.pointerId;joy.setPointerCapture(event.pointerId)});joy.addEventListener('pointermove',event=>{if(event.pointerId!==joyPointer)return;const rect=joy.getBoundingClientRect();let x=(event.clientX-(rect.left+rect.width/2))/42,z=(event.clientY-(rect.top+rect.height/2))/42;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length}moveVector.set(x,z);stick.style.transform=`translate(${x*27}px,${z*27}px)`});['pointerup','pointercancel'].forEach(type=>joy.addEventListener(type,event=>{if(event.pointerId===joyPointer){joyPointer=null;moveVector.set(0,0);stick.style.transform=''}}));
  const clock=new T.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04),now=performance.now();
+  const paused=releaseAt>now&&now>=hitAt;
+  if(pendingHits.length&&now>=releaseAt){
+   for(const object of pendingHits){
+    object.userData.destroyed=true;object.userData.destroyedAt=now;
+    impact(object.getWorldPosition(new T.Vector3()),object.userData.debrisColor,now);
+   }
+   shakeStrength=Math.min(.38,.14+pendingHits.length*.07);shakeUntil=now+260;
+   pendingHits=[];
+  }
   let walking=false;
-  if(isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
-  if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
+  if(!paused&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
+  if(!paused&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
-  const progress=T.MathUtils.clamp(1-(swingingUntil-now)/swingDuration,0,1);
+  const remainingPause=releaseAt?T.MathUtils.clamp(releaseAt-now,0,hitStop):0;
+  const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingDuration,0,1);
   const swingActive=now<swingingUntil;
-  swingSweep.visible=swingActive;
+  swingSweep.visible=tipTrail.visible=swingActive;
   if(swingActive){
    const sweep=T.MathUtils.smoothstep(progress,.04,.73);
    swingArm.rotation.x=0;
@@ -135,12 +195,26 @@ export function startClassroom(game){
     const alpha=T.MathUtils.smoothstep(behind,0,.075)*(1-T.MathUtils.smoothstep(behind,.09,.47))*fade;
     trailColors.setXYZW(i*2,1,1,1,alpha*.12);
     trailColors.setXYZW(i*2+1,1,1,1,alpha*.76);
+    const tipAlpha=T.MathUtils.smoothstep(behind,0,.025)*(1-T.MathUtils.smoothstep(behind,.04,.21))*fade;
+    tipColors.setXYZW(i*2,1,1,1,0);
+    tipColors.setXYZW(i*2+1,1,1,1,tipAlpha);
    }
-   trailColors.needsUpdate=true;
+   trailColors.needsUpdate=tipColors.needsUpdate=true;
   }else{
    swingArm.rotation.y=0;
    bat.rotation.set(.18,0,-1.05);
   }
+  const glintAge=(now-swingingUntil)/1000+.105;
+  glints.forEach((glint,i)=>{
+   const age=glintAge-i*.024;
+   glint.visible=swingingUntil>0&&age>0&&age<.21;
+   if(!glint.visible)return;
+   const fade=Math.sin(Math.PI*age/.21);
+   glint.material.opacity=fade;
+   glint.material.rotation=i*.45+age*4;
+   glint.position.set(-1.8-i*.29-age*1.3,1.7+i*.18+age*.8,1.7+i*.22);
+   glint.scale.setScalar((.32-i*.055)*fade);
+  });
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
