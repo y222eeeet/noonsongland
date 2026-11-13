@@ -59,10 +59,24 @@ export function startClassroom(game){
  bat.position.set(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
  bat.rotation.set(.18,0,-1.05);
  swingArm.add(bat);
- const sweepMaterial=new T.MeshBasicMaterial({color:'#fff',transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide});
- const swingSweep=new T.Mesh(new T.RingGeometry(1.0,4.45,32,1,-.72,1.44),sweepMaterial);
- swingSweep.rotation.set(-Math.PI/2,0,Math.PI/2);
- swingSweep.position.y=1.15;
+ const swingArc=1.08,trailSegments=40;
+ const trailGeometry=new T.BufferGeometry();
+ const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
+ const trailPoints=[],trailIndices=[];
+ for(let i=0;i<=trailSegments;i++){
+  const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
+  for(const radius of [1.55,3.9])trailPoints.push(Math.sin(angle)*radius,0,Math.cos(angle)*radius);
+  if(i<trailSegments){
+   const j=i*2;
+   trailIndices.push(j,j+1,j+2,j+1,j+3,j+2);
+  }
+ }
+ trailGeometry.setAttribute('position',new T.Float32BufferAttribute(trailPoints,3));
+ trailGeometry.setAttribute('color',trailColors.setUsage(T.DynamicDrawUsage));
+ trailGeometry.setIndex(trailIndices);
+ const sweepMaterial=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,side:T.DoubleSide});
+ const swingSweep=new T.Mesh(trailGeometry,sweepMaterial);
+ swingSweep.position.y=1.61;
  swingSweep.visible=false;
  songi.add(swingSweep);
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
@@ -108,13 +122,25 @@ export function startClassroom(game){
   if(!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
   const progress=T.MathUtils.clamp(1-(swingingUntil-now)/swingDuration,0,1);
-  const swingAmount=now<swingingUntil?Math.sin(progress*Math.PI):0;
-  if(swingAmount>0)swingArm.rotation.x=-1.45*swingAmount;
-  swingArm.rotation.z=-.62*swingAmount;
-  bat.rotation.set(.18+.34*swingAmount,0,-1.05+.32*swingAmount);
-  swingSweep.visible=swingAmount>.04;
-  sweepMaterial.opacity=.52*swingAmount;
-  swingSweep.scale.setScalar(1+swingAmount*.08);
+  const swingActive=now<swingingUntil;
+  swingSweep.visible=swingActive;
+  if(swingActive){
+   const sweep=T.MathUtils.smoothstep(progress,.04,.73);
+   swingArm.rotation.x=0;
+   swingArm.rotation.y=T.MathUtils.lerp(swingArc,-swingArc,sweep);
+   bat.rotation.set(Math.PI/2,0,0);
+   const fade=1-T.MathUtils.smoothstep(progress,.68,1);
+   for(let i=0;i<=trailSegments;i++){
+    const behind=sweep-i/trailSegments;
+    const alpha=T.MathUtils.smoothstep(behind,0,.075)*(1-T.MathUtils.smoothstep(behind,.09,.47))*fade;
+    trailColors.setXYZW(i*2,1,1,1,alpha*.12);
+    trailColors.setXYZW(i*2+1,1,1,1,alpha*.76);
+   }
+   trailColors.needsUpdate=true;
+  }else{
+   swingArm.rotation.y=0;
+   bat.rotation.set(.18,0,-1.05);
+  }
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
  }frame();
