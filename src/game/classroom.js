@@ -19,28 +19,33 @@ export function startClassroom(game){
  const mat=(color,roughness=.82)=>new T.MeshStandardMaterial({color,roughness});
  const cream=mat('#fff8ed'),wall=mat('#e7dced'),floorMat=mat('#cdbba7'),wood=mat('#b5896d'),chairMat=mat('#b99ddd'),boardMat=mat('#496f61');
  const add=(geometry,material,x,y,z,parent=scene)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);parent.add(mesh);return mesh};
+ const dustGeometry=new T.SphereGeometry(.13,8,6),impactBursts=[];let shakeUntil=0,shakeStrength=0;
+ function impact(position,color='#d7ad8c'){
+  const burst=new T.Group(),material=new T.MeshBasicMaterial({color,transparent:true,opacity:.78,depthWrite:false});burst.position.copy(position);burst.position.y+=1;scene.add(burst);
+  for(let i=0;i<11;i++){const puff=new T.Mesh(dustGeometry,material);const angle=i/11*Math.PI*2+Math.random()*.35,speed=1.4+Math.random()*2.3;puff.userData.velocity=new T.Vector3(Math.cos(angle)*speed,.7+Math.random()*2.1,Math.sin(angle)*speed);puff.scale.setScalar(.55+Math.random()*.8);burst.add(puff)}
+  impactBursts.push({burst,material,started:performance.now()});
+ }
+ function updateImpacts(now,dt){for(let i=impactBursts.length-1;i>=0;i--){const item=impactBursts[i],age=(now-item.started)/1000;if(age>.72){scene.remove(item.burst);item.material.dispose();impactBursts.splice(i,1);continue}item.material.opacity=.78*(1-age/.72);item.burst.children.forEach(puff=>{puff.position.addScaledVector(puff.userData.velocity,dt);puff.userData.velocity.y-=dt*5.5;puff.scale.multiplyScalar(1+dt*.7)})}}
  const halfX=22,halfZ=17;
  add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
  add(new T.BoxGeometry(2.3,5.2,.18),wood,17.8,2.45,-halfZ+.24);
  const destructibles=[],obstacles=[];
- function destructible(group,bounds){group.userData.destroyed=false;destructibles.push(group);obstacles.push({group,...bounds});return group}
- function wallPanel(x,z,width){const panel=destructible(new T.Group(),{x,z,w:width/2,d:.35});panel.position.set(x,0,z);scene.add(panel);add(new T.BoxGeometry(width,9,.35),cream,0,4.3,0,panel);return panel}
+ function destructible(group,bounds,color='#d7ad8c'){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);obstacles.push({group,...bounds});return group}
+ function wallPanel(x,z,width){const panel=destructible(new T.Group(),{x,z,w:width/2,d:.35},'#eee0ea');panel.position.set(x,0,z);scene.add(panel);add(new T.BoxGeometry(width,9,.35),cream,0,4.3,0,panel);return panel}
  wallPanel(-14,-halfZ,12);wallPanel(0,-halfZ,12);wallPanel(14,-halfZ,12);wallPanel(0,halfZ,halfX*2+1);
- const board=destructible(new T.Group(),{x:0,z:-halfZ+.42,w:5.3,d:.4});board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
+ const board=destructible(new T.Group(),{x:0,z:-halfZ+.42,w:5.3,d:.4},'#6f9686');board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
  function desk(x,z){
-  const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0});table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
-  const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72});chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
+  const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
+  const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
  }
  // Two wide columns keep the centre aisle open. A chair belongs to its desk's
  // blocked footprint, while the gap before the next row stays walkable.
  for(const z of [-9,0,9])for(const x of [-11,11])desk(x,z);
  const podium=destructible(new T.Group(),{x:0,z:-13.4,w:2.25,d:1.25});podium.position.set(0,0,-13.4);scene.add(podium);add(new T.BoxGeometry(4.1,1.65,1.85),wood,0,.82,0,podium);add(new T.BoxGeometry(4.35,.2,2.05),cream,0,1.73,0,podium);
- const professors=['woman','man'].map((variant,index)=>{
-  const model=createProfessor(variant);
-  model.position.set(index===0?-1.4:1.4,0,podium.position.z+2.55);
-  scene.add(model);
-  return {model,target:new T.Vector3(17.25,0,-15.3+index*.9)};
- });
+ const professor=createProfessor(Math.random()<.5?'woman':'man');
+ professor.position.set(podium.position.x,0,(podium.position.z+board.position.z)/2);
+ scene.add(professor);
+ const professorTarget=new T.Vector3(17.25,0,-15.3);
  let swingCount=0,professorPhase='waiting',won=false;
  const songi=createSongi();songi.position.set(0,.05,14);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
  // The bat's pivot is attached to Song-i's right arm, so walking and swing
@@ -59,20 +64,20 @@ export function startClassroom(game){
  const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
   if(professorPhase==='waiting'||professorPhase==='gone')return;
-  for(const {model,target} of professors){
-   if(!model.visible)continue;
-   if(professorPhase==='shaking'){
-    model.rotation.z=Math.sin(now*.035+model.position.x)*.075;
-    continue;
-   }
-   model.rotation.z=0;
-   professorDirection.subVectors(target,model.position).setY(0);
-   if(professorDirection.length()<.45){model.visible=false;continue;}
-   professorDirection.normalize();
-   model.position.addScaledVector(professorDirection,dt*7.5);
-   model.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
+  if(professorPhase==='shaking'){
+   professor.rotation.z=Math.sin(now*.035)*.075;
+   return;
   }
-  if(professors.every(({model})=>!model.visible))professorPhase='gone';
+  professor.rotation.z=0;
+  professorDirection.subVectors(professorTarget,professor.position).setY(0);
+  if(professorDirection.length()<.45){
+   professor.visible=false;
+   professorPhase='gone';
+   return;
+  }
+  professorDirection.normalize();
+  professor.position.addScaledVector(professorDirection,dt*7.5);
+  professor.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
  }
  function checkVictory(){if(won||!destructibles.every(object=>object.userData.destroyed))return;won=true;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!'}
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
