@@ -1,54 +1,7 @@
 import * as T from 'three';
 import { ROUTES } from '../game/campus-routes-layout.js';
 
-function bannerImage() {
- const canvas=document.createElement('canvas');
- canvas.width=2048;canvas.height=320;
- const ctx=canvas.getContext('2d');
- const background=ctx.createLinearGradient(0,0,0,320);
- background.addColorStop(0,'#f7f3ff');
- background.addColorStop(1,'#dcefff');
- ctx.fillStyle=background;ctx.fillRect(0,0,2048,320);
- ctx.fillStyle='#ffffff55';
- for(let x=0;x<2048;x+=64)ctx.fillRect(x,0,32,320);
-
- for(const [x,side] of [[0,1],[2048,-1]]){
-  ctx.save();ctx.translate(x,0);ctx.scale(side,1);
-  ctx.fillStyle='#716db0';
-  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(245,0);ctx.lineTo(176,320);ctx.lineTo(0,320);ctx.fill();
-  ctx.strokeStyle='#f6f5ff';ctx.lineWidth=7;ctx.lineCap='round';
-  for(const [cx,cy,r] of [[90,89,53],[146,227,34],[40,269,20]]){
-   ctx.save();ctx.translate(cx,cy);
-   for(let i=0;i<6;i++){
-    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-r);
-    ctx.moveTo(-r*.22,-r*.66);ctx.lineTo(0,-r*.46);ctx.lineTo(r*.22,-r*.66);
-    ctx.stroke();ctx.rotate(Math.PI/3);
-   }
-   ctx.restore();
-  }
-  ctx.restore();
- }
-
- const title='명신언덕 눈썰매장';
- const colors=['#5c54a3','#43789f','#5c54a3','#43789f','#4776b2','#b96243','#42837c','#80529b'];
- ctx.font='900 168px "Apple SD Gothic Neo","Malgun Gothic",sans-serif';
- ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
- const glyphs=[...title];
- const widths=glyphs.map(glyph=>glyph===' '?65:Math.max(176,ctx.measureText(glyph).width));
- let x=(canvas.width-widths.reduce((sum,width)=>sum+width,0))/2,color=0;
- glyphs.forEach((glyph,index)=>{
-  const center=x+widths[index]/2;
-  x+=widths[index];
-  if(glyph===' ')return;
-  ctx.strokeStyle='#857bad';ctx.lineWidth=16;ctx.strokeText(glyph,center+6,176);
-  ctx.strokeStyle='#fff9f6';ctx.lineWidth=16;ctx.strokeText(glyph,center,163);
-  ctx.fillStyle=colors[color++];ctx.fillText(glyph,center,163);
- });
- ctx.fillStyle='#8f80be';ctx.fillRect(0,0,2048,7);ctx.fillRect(0,313,2048,7);
- const texture=new T.CanvasTexture(canvas);
- texture.colorSpace=T.SRGBColorSpace;
- return texture;
-}
+import bannerUrl from '../assets/sled-banner.webp';
 
 export function addSledBanner(parent,obstacles) {
  const {sledHill,upper}=ROUTES;
@@ -74,7 +27,10 @@ export function addSledBanner(parent,obstacles) {
  const support=place(new T.CylinderGeometry(.035,.035,width,8),poleMaterial,poleHeight-.18,0);
  support.rotation.x=Math.PI/2;
 
- const material=new T.MeshBasicMaterial({map:bannerImage()});
+ const texture=new T.TextureLoader().load(bannerUrl);
+ texture.colorSpace=T.SRGBColorSpace;
+ texture.anisotropy=4;
+ const material=new T.MeshBasicMaterial({map:texture});
  material.color.setScalar(.96);
  const cloth=new T.PlaneGeometry(width,bannerHeight,24,1);
  const vertices=cloth.attributes.position;
