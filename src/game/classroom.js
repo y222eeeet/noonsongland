@@ -73,7 +73,8 @@ export function startClassroom(game){
  let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- const swingLength=520,joinLength=70,batTip=3.645;
+ const downLength=200,returnLength=500,joinLength=70,batTip=3.645;
+ const swingLength=downLength+returnLength,downEnd=.69;
  const swingArm=songi.userData.parts.arm1,beltArm=songi.userData.parts.arm0;
  const hand=swingArm.children[0],palm=beltArm.children[0];
  const restHand=hand.position.clone(),restPalm=palm.position.clone();
@@ -184,7 +185,7 @@ export function startClassroom(game){
    const delta=object.position.clone().sub(songi.position);delta.y=0;
    return delta.length()<=swingReach&&facing.dot(delta.normalize())>=Math.cos(.72);
   });
-  hitAt=now+swingLength*hitProgress;
+  hitAt=now+downLength*hitProgress/downEnd;
   releaseAt=pendingHits.length?hitAt+hitStop:0;
   if(releaseAt)swingingUntil+=hitStop;
  }
@@ -244,7 +245,10 @@ export function startClassroom(game){
   if(!won&&!paused&&!swingActive&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   songi.userData.animate?.(now/1000,celebrating?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
   const remainingPause=releaseAt?T.MathUtils.clamp(releaseAt-now,0,hitStop):0;
-  const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingLength,0,1);
+  const swingElapsed=T.MathUtils.clamp(swingLength-(swingingUntil-now-remainingPause),0,swingLength);
+  const progress=swingElapsed<=downLength
+   ?downEnd*swingElapsed/downLength
+   :T.MathUtils.lerp(downEnd,1,(swingElapsed-downLength)/returnLength);
   const trailActive=swingActive&&progress>=.34&&progress<.80;
   swingSweep.visible=tipTrail.visible=trailActive;
   sampleIdle(now);
@@ -295,7 +299,7 @@ export function startClassroom(game){
    bat.position.copy(restGrip).applyQuaternion(swingArm.quaternion).add(swingArm.position);
    bat.quaternion.setFromUnitVectors(axis,direction.set(1,.35,.24).normalize());
   }
-  const glintAge=(now-swingingUntil+swingLength*.31)/1000;
+  const glintAge=(now-swingingUntil+returnLength)/1000;
   glints.forEach((glint,i)=>{
    const age=glintAge-i*.024;
    glint.visible=swingingUntil>0&&age>0&&age<.21;
