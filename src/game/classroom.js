@@ -73,7 +73,7 @@ export function startClassroom(game){
  let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- const swingLength=1000,joinLength=150,batTip=3.645;
+ const swingLength=360,joinLength=55,batTip=3.645;
  const swingArm=songi.userData.parts.arm1,beltArm=songi.userData.parts.arm0;
  const hand=swingArm.children[0],palm=beltArm.children[0];
  const restHand=hand.position.clone(),restPalm=palm.position.clone();
@@ -160,7 +160,7 @@ export function startClassroom(game){
  }
  const tipTrail=new T.Mesh(tipGeometry,sweepMaterial);
  tipTrail.visible=false;songi.add(tipTrail);
- const hitStop=55,hitProgress=.58;
+ const hitStop=35,hitProgress=.58;
  let pendingHits=[],hitAt=0,releaseAt=0;
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
@@ -174,7 +174,7 @@ export function startClassroom(game){
  function startSwing(target,now,join){
   fromGrip.copy(gripPoint);fromDirection.copy(direction);fromLeftGrip=leftGrip;
   transitionLength=join;swingStartedAt=now;recoveringAt=null;queuedSwing=null;
-  swingingUntil=now+join+swingLength;releaseAt=0;
+  swingingUntil=now+swingLength;releaseAt=0;
   swingCount++;
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
@@ -184,7 +184,7 @@ export function startClassroom(game){
    const delta=object.position.clone().sub(songi.position);delta.y=0;
    return delta.length()<=swingReach&&facing.dot(delta.normalize())>=Math.cos(.72);
   });
-  hitAt=now+join+swingLength*hitProgress;
+  hitAt=now+swingLength*hitProgress;
   releaseAt=pendingHits.length?hitAt+hitStop:0;
   if(releaseAt)swingingUntil+=hitStop;
  }
