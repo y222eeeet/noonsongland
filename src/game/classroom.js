@@ -92,13 +92,13 @@ export function startClassroom(game){
  add(new T.CylinderGeometry(.20,.20,.115,8),beltSilver,0,0,.16,championBelt).rotation.x=Math.PI/2;
  for(const x of [-.60,.60])add(new T.CylinderGeometry(.08,.08,.11,8),beltGold,x,0,.11,championBelt).rotation.x=Math.PI/2;
  championBelt.position.set(.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
- const swingArc=1.08,trailSegments=40;
+ const swingArc=1.08,swingReach=6.6,trailSegments=40;
  const trailGeometry=new T.BufferGeometry();
  const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
  const trailPoints=[],trailIndices=[];
  for(let i=0;i<=trailSegments;i++){
   const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
-  for(const radius of [1.55,3.9])trailPoints.push(Math.sin(angle)*radius,0,Math.cos(angle)*radius);
+  for(const radius of [1.55,5.85])trailPoints.push(Math.sin(angle)*radius,0,Math.cos(angle)*radius);
   if(i<trailSegments){
    const j=i*2;
    trailIndices.push(j,j+1,j+2,j+1,j+3,j+2);
@@ -129,7 +129,7 @@ export function startClassroom(game){
  const tipPoints=tipGeometry.attributes.position,tipColors=tipGeometry.attributes.color;
  for(let i=0;i<=trailSegments;i++){
   const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
-  for(const [edge,radius] of [2.74,2.85].entries()){
+  for(const [edge,radius] of [5.65,5.85].entries()){
    tipPoints.setXYZ(i*2+edge,swingArm.position.x+Math.sin(angle)*radius+Math.cos(angle)*bat.position.x,
     swingArm.position.y+bat.position.y+.025,Math.cos(angle)*radius-Math.sin(angle)*bat.position.x);
   }
@@ -150,7 +150,7 @@ export function startClassroom(game){
   pendingHits=destructibles.filter(object=>{
    if(object.userData.destroyed)return false;
    const delta=object.position.clone().sub(songi.position);delta.y=0;
-   return delta.length()<=4.4&&facing.dot(delta.normalize())>=Math.cos(.72);
+   return delta.length()<=swingReach&&facing.dot(delta.normalize())>=Math.cos(.72);
   });
   hitAt=now+swingDuration*hitProgress;
   releaseAt=pendingHits.length?hitAt+hitStop:0;
@@ -249,7 +249,7 @@ export function startClassroom(game){
    glint.scale.setScalar((.32-i*.055)*fade);
   });
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
-  if(celebrating){
+  if(won){
    if(camera.fov!==38){camera.fov=38;camera.updateProjectionMatrix()}
    // Song-i faces local +Z here, so this is a close front-facing victory shot.
    camera.position.set(songi.position.x,songi.position.y+3.1,songi.position.z+8.4);
