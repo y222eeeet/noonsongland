@@ -63,6 +63,7 @@ export function startClassroom(game){
  const professor=createProfessor(Math.random()<.5?'woman':'man');
  professor.position.set(podium.position.x,0,(podium.position.z+board.position.z)/2);
  scene.add(professor);
+ const professorStart=professor.position.clone();
  const professorTarget=new T.Vector3(17.25,0,-15.3);
  let swingCount=0,professorPhase='waiting',won=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
@@ -146,10 +147,12 @@ export function startClassroom(game){
  function updateProfessor(now,dt){
   if(professorPhase==='waiting'||professorPhase==='gone')return;
   if(professorPhase==='shaking'){
-   professor.rotation.z=Math.sin(now*.035)*.075;
+   // Keep the professor upright: a tiny sideways shuffle and fine tremor read
+   // as fear without the wide, fan-like body rotation.
+   professor.position.x=professorStart.x+Math.sin(now*.022)*.12+Math.sin(now*.081)*.018;
+   professor.position.z=professorStart.z+Math.cos(now*.067)*.012;
    return;
   }
-  professor.rotation.z=0;
   professorDirection.subVectors(professorTarget,professor.position).setY(0);
   if(professorDirection.length()<.45){
    professor.visible=false;
