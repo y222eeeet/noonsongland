@@ -50,13 +50,12 @@ export function startClassroom(game){
   }
  }
  const halfX=22,halfZ=17;
- add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
+ add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,-halfZ);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
  add(new T.BoxGeometry(2.3,5.2,.18),wood,17.8,2.45,-halfZ+.24);
  const destructibles=[],victoryTargets=[],obstacles=[];
  function destructible(group,bounds,color='#d7ad8c',required=true){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);if(required)victoryTargets.push(group);obstacles.push({group,...bounds});return group}
- function wallPanel(x,z,width){const panel=destructible(new T.Group(),{x,z,w:width/2,d:.35},'#eee0ea',false);panel.position.set(x,0,z);scene.add(panel);add(new T.BoxGeometry(width,9,.35),cream,0,4.3,0,panel);return panel}
- wallPanel(-14,-halfZ,12);wallPanel(0,-halfZ,12);wallPanel(14,-halfZ,12);wallPanel(0,halfZ,halfX*2+1);
- const board=destructible(new T.Group(),{x:0,z:-halfZ+.42,w:5.3,d:.4},'#6f9686');board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
+ // Walls and the board define the room; only the furniture is breakable.
+ const board=new T.Group();board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
  function desk(x,z){
   const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
   const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
