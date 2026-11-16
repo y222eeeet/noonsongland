@@ -73,10 +73,8 @@ export function startClassroom(game){
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
  const swingDuration=310;
- // The bat stays in Song-i's left hand; the right hand is reserved for the
- // champion belt shown during the victory pose.
- const swingArm=songi.userData.parts.arm0;
- const beltArm=songi.userData.parts.arm1;
+ const swingArm=songi.userData.parts.arm1;
+ const beltArm=songi.userData.parts.arm0;
  const hand=swingArm.children[0];
  const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');
  // Put the grip at the pivot so rotating the bat keeps it in Song-i's hand.
@@ -85,12 +83,34 @@ export function startClassroom(game){
  bat.position.set(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
  bat.rotation.set(.18,0,-1.05);
  swingArm.add(bat);
+ const palm=beltArm.children[0];
+ const batonAxis=new T.Vector3(0,1,0),tapDirection=new T.Vector3();
+ const tapLift=new T.Quaternion(),inverseArm=new T.Quaternion();
+ const tapAxis=new T.Vector3(0,0,1);
+ const palmContact=new T.Vector3(),gripCenter=new T.Vector3();
+ const tapStartedAt=performance.now();
+ function poseBatTap(now){
+  swingArm.rotation.set(-1.46,0,0);
+  beltArm.rotation.set(-1.46,0,0);
+  palmContact.copy(palm.position).addScaledVector(restPalmDirection,.16)
+   .applyQuaternion(beltArm.quaternion).add(beltArm.position);
+  gripCenter.copy(bat.position).applyQuaternion(swingArm.quaternion).add(swingArm.position);
+  palmContact.y+=.27;
+  tapDirection.subVectors(palmContact,gripCenter);
+  bat.scale.y=tapDirection.length()/2.70;
+  const beat=((now-tapStartedAt)%1000)/1000;
+  const lift=.44*T.MathUtils.smoothstep(beat,.53,.82)*(1-T.MathUtils.smoothstep(beat,.84,1));
+  tapDirection.normalize().applyQuaternion(tapLift.setFromAxisAngle(tapAxis,-lift));
+  tapDirection.applyQuaternion(inverseArm.copy(swingArm.quaternion).invert());
+  bat.quaternion.setFromUnitVectors(batonAxis,tapDirection);
+ }
+ const restPalmDirection=palm.position.clone().normalize();
  const championBelt=new T.Group(),beltStrap=mat('#24222d',.55),beltGold=mat('#f5cf58',.38),beltSilver=mat('#fff4c8',.32);
  add(new T.BoxGeometry(1.72,.42,.10),beltStrap,0,0,0,championBelt);
  add(new T.CylinderGeometry(.34,.34,.10,8),beltGold,0,0,.10,championBelt).rotation.x=Math.PI/2;
  add(new T.CylinderGeometry(.20,.20,.115,8),beltSilver,0,0,.16,championBelt).rotation.x=Math.PI/2;
  for(const x of [-.60,.60])add(new T.CylinderGeometry(.08,.08,.11,8),beltGold,x,0,.11,championBelt).rotation.x=Math.PI/2;
- championBelt.position.set(.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
+ championBelt.position.set(-.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
  const swingArc=1.08,swingReach=6.6,trailSegments=40;
  const trailGeometry=new T.BufferGeometry();
  const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
@@ -207,6 +227,7 @@ export function startClassroom(game){
   const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingDuration,0,1);
   const swingActive=!won&&now<swingingUntil;
   swingSweep.visible=tipTrail.visible=swingActive;
+  bat.scale.y=1;
   if(swingActive){
    const sweep=T.MathUtils.smoothstep(progress,.04,.73);
    swingArm.rotation.x=0;
@@ -223,14 +244,16 @@ export function startClassroom(game){
     tipColors.setXYZW(i*2+1,1,1,1,tipAlpha);
    }
    trailColors.needsUpdate=tipColors.needsUpdate=true;
+  }else if(!won){
+   poseBatTap(now);
   }else if(!celebrating){
    swingArm.rotation.y=0;
-   bat.rotation.set(.18,0,-1.05);
+   bat.rotation.set(.35,0,.92);
   }
   if(celebrating){
    const celebrationAge=now-victoryStartedAt,bounce=Math.max(0,Math.sin(celebrationAge*.022))*.62;
    songi.position.y=.05+bounce;championBelt.visible=true;
-   parts.arm0.rotation.set(-.46,0,-.78);parts.arm1.rotation.set(-.52,0,.72);
+   swingArm.rotation.set(-.46,0,.78);beltArm.rotation.set(-.52,0,-.72);
    parts.leg0.rotation.x=.14;parts.leg1.rotation.x=-.14;
    bat.rotation.set(.35,0,.92);
   }else{
