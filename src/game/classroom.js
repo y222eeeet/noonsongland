@@ -1,3 +1,4 @@
+import { sampleClassroomSwing } from './classroom-swing.js';
 import * as T from 'three';
 import { createProfessor } from '../models/professor.js';
 import { createSongi } from '../models/songi.js';
@@ -72,45 +73,40 @@ export function startClassroom(game){
  let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- const swingDuration=310;
- const swingArm=songi.userData.parts.arm1;
- const beltArm=songi.userData.parts.arm0;
- const hand=swingArm.children[0];
- const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');
- // Put the grip at the pivot so rotating the bat keeps it in Song-i's hand.
- add(new T.CylinderGeometry(.30,.16,2.6,10),batWood,0,1.52,0,bat);
- add(new T.CylinderGeometry(.12,.15,.5,10),batGrip,0,0,0,bat);
- bat.position.set(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
- bat.rotation.set(.18,0,-1.05);
- swingArm.add(bat);
- const palm=beltArm.children[0];
- const restHand=hand.position.clone(),restPalm=palm.position.clone(),restGrip=bat.position.clone();
- const handForward=restHand.clone().normalize(),palmForward=restPalm.clone().normalize();
- const batonAxis=new T.Vector3(0,1,0),tapDirection=new T.Vector3();
- const tapLift=new T.Quaternion(),inverseArm=new T.Quaternion();
- const tapAxis=new T.Vector3(0,0,1);
- const palmContact=new T.Vector3(),gripCenter=new T.Vector3();
- const tapStartedAt=performance.now();
- function aimBat(direction){
-  direction.normalize().applyQuaternion(inverseArm.copy(swingArm.quaternion).invert());
-  bat.quaternion.setFromUnitVectors(batonAxis,direction);
+ const swingLength=1000,joinLength=150,batTip=3.645;
+ const swingArm=songi.userData.parts.arm1,beltArm=songi.userData.parts.arm0;
+ const hand=swingArm.children[0],palm=beltArm.children[0];
+ const restHand=hand.position.clone(),restPalm=palm.position.clone();
+ const restHandRotation=hand.quaternion.clone(),restPalmRotation=palm.quaternion.clone();
+ const restGrip=new T.Vector3(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
+ const bat=new T.Group();
+ add(new T.CylinderGeometry(.115,.135,.54,12),mat('#705043'),0,0,0,bat);
+ add(new T.CylinderGeometry(.25,.125,batTip-.26,12),mat('#c99361'),0,(batTip+.26)/2,0,bat);
+ songi.add(bat);
+ const axis=new T.Vector3(0,1,0),gripPoint=new T.Vector3(),direction=new T.Vector3();
+ const reach=new T.Vector3(),handCenter=new T.Vector3();
+ const idleGrip=new T.Vector3(.97,1.9,1.19),idleDirection=new T.Vector3(),idlePalm=new T.Vector3(-.94,1.74,1.24);
+ const fromGrip=new T.Vector3(),fromDirection=new T.Vector3();
+ let leftGrip=0,fromLeftGrip=0,transitionLength=joinLength,swingStartedAt=0,recoveringAt=null,queuedSwing=null;
+ function sampleIdle(now){
+  const beat=(now%1000)/1000;
+  const lift=.38*T.MathUtils.smoothstep(beat,.48,.80)*(1-T.MathUtils.smoothstep(beat,.82,1));
+  idleDirection.set(-Math.cos(lift),Math.sin(lift)+.045,.025).normalize();
  }
- function poseBatTap(now){
-  swingArm.rotation.set(-1.38,0,0);
-  beltArm.rotation.set(-1.38,0,0);
-  hand.position.copy(restHand).addScaledVector(handForward,.46);
-  palm.position.copy(restPalm).addScaledVector(palmForward,.59);
-  hand.scale.y=2.65;palm.scale.y=2.95;
-  bat.position.copy(restGrip).addScaledVector(handForward,.86);
-  palmContact.copy(restPalm).addScaledVector(palmForward,1.00)
-   .applyQuaternion(beltArm.quaternion).add(beltArm.position);
-  gripCenter.copy(bat.position).applyQuaternion(swingArm.quaternion).add(swingArm.position);
-  palmContact.y+=.35;
-  tapDirection.subVectors(palmContact,gripCenter);
-  bat.scale.y=tapDirection.length()/2.70;
-  const beat=((now-tapStartedAt)%1000)/1000;
-  const lift=.34*T.MathUtils.smoothstep(beat,.53,.82)*(1-T.MathUtils.smoothstep(beat,.84,1));
-  aimBat(tapDirection.applyQuaternion(tapLift.setFromAxisAngle(tapAxis,-lift)));
+ function aimHand(arm,mesh,target){
+  reach.subVectors(target,arm.position);
+  mesh.position.copy(reach).multiplyScalar(.56);
+  mesh.scale.y=reach.length()*.88/.68;
+  mesh.quaternion.setFromUnitVectors(axis,reach.normalize());
+ }
+ function renderBatPose(){
+  swingArm.rotation.set(0,0,0);beltArm.rotation.set(0,0,0);
+  bat.position.copy(gripPoint);
+  bat.quaternion.setFromUnitVectors(axis,direction);
+  handCenter.copy(gripPoint).addScaledVector(direction,.13);
+  aimHand(swingArm,hand,handCenter);
+  handCenter.copy(gripPoint).addScaledVector(direction,-.13).lerp(idlePalm,1-leftGrip);
+  aimHand(beltArm,palm,handCenter);
  }
  const championBelt=new T.Group(),beltStrap=mat('#24222d',.55),beltGold=mat('#f5cf58',.38),beltSilver=mat('#fff4c8',.32);
  add(new T.BoxGeometry(1.72,.42,.10),beltStrap,0,0,0,championBelt);
@@ -119,25 +115,16 @@ export function startClassroom(game){
  for(const x of [-.60,.60])add(new T.CylinderGeometry(.08,.08,.11,8),beltGold,x,0,.11,championBelt).rotation.x=Math.PI/2;
  championBelt.position.set(-.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
  const swingReach=6.6,trailSegments=40;
- const swingGrip=new T.Vector3(),swingDirection=new T.Vector3(),swingPitchAxis=new T.Vector3(1,0,0);
- function diagonalSwingPose(sweep){
-  const yaw=T.MathUtils.lerp(1.48,-1.16,sweep);
-  const elevation=T.MathUtils.lerp(1.08,-.32,sweep);
-  swingDirection.set(Math.sin(yaw)*Math.cos(elevation),Math.sin(elevation),Math.cos(yaw)*Math.cos(elevation));
- }
- function diagonalGripPitch(sweep){
-  return T.MathUtils.lerp(-2.05,-1.35,sweep);
- }
+ const swingGrip=new T.Vector3(),swingDirection=new T.Vector3();
  function trailPoint(sweep,reach){
-  diagonalSwingPose(sweep);
-  return swingGrip.copy(restGrip).applyAxisAngle(swingPitchAxis,diagonalGripPitch(sweep))
-   .add(swingArm.position).addScaledVector(swingDirection,reach);
+  sampleClassroomSwing(T.MathUtils.lerp(.34,.69,sweep),swingGrip,swingDirection);
+  return swingGrip.addScaledVector(swingDirection,reach);
  }
  const trailGeometry=new T.BufferGeometry();
  const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
  const trailPoints=[],trailIndices=[];
  for(let i=0;i<=trailSegments;i++){
-  for(const reach of [1.55,5.85])trailPoints.push(...trailPoint(i/trailSegments,reach).toArray());
+  for(const reach of [1.55,batTip])trailPoints.push(...trailPoint(i/trailSegments,reach).toArray());
   if(i<trailSegments){
    const j=i*2;
    trailIndices.push(j,j+1,j+2,j+1,j+3,j+2);
@@ -166,20 +153,28 @@ export function startClassroom(game){
  const tipGeometry=trailGeometry.clone();
  const tipPoints=tipGeometry.attributes.position,tipColors=tipGeometry.attributes.color;
  for(let i=0;i<=trailSegments;i++){
-  for(const [edge,reach] of [5.65,5.85].entries()){
+  for(const [edge,reach] of [batTip-.12,batTip].entries()){
    const point=trailPoint(i/trailSegments,reach);
    tipPoints.setXYZ(i*2+edge,point.x,point.y+.025,point.z);
   }
  }
  const tipTrail=new T.Mesh(tipGeometry,sweepMaterial);
  tipTrail.visible=false;songi.add(tipTrail);
- const hitStop=55,hitProgress=.54;
+ const hitStop=55,hitProgress=.58;
  let pendingHits=[],hitAt=0,releaseAt=0;
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
  function swing(target){
-  const now=performance.now();if(now<swingingUntil||won)return;swingingUntil=now+swingDuration;releaseAt=0;
+  if(won)return;
+  const now=performance.now();
+  if(now<swingingUntil){queuedSwing={target};return;}
+  startSwing(target,now,joinLength);
+ }
+ function startSwing(target,now,join){
+  fromGrip.copy(gripPoint);fromDirection.copy(direction);fromLeftGrip=leftGrip;
+  transitionLength=join;swingStartedAt=now;recoveringAt=null;queuedSwing=null;
+  swingingUntil=now+join+swingLength;releaseAt=0;
   swingCount++;
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
@@ -189,7 +184,7 @@ export function startClassroom(game){
    const delta=object.position.clone().sub(songi.position);delta.y=0;
    return delta.length()<=swingReach&&facing.dot(delta.normalize())>=Math.cos(.72);
   });
-  hitAt=now+swingDuration*hitProgress;
+  hitAt=now+join+swingLength*hitProgress;
   releaseAt=pendingHits.length?hitAt+hitStop:0;
   if(releaseAt)swingingUntil+=hitStop;
  }
@@ -221,7 +216,7 @@ export function startClassroom(game){
   camera.position.set(x,y+6.4,z+12);
   camera.lookAt(x,y+2.05,z);
  }
- addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
+ addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();if(!event.repeat)swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
  canvas.addEventListener('pointermove',event=>{if(!isMobile||!canvasPress)return;const dx=event.clientX-canvasPress.lastX,dy=event.clientY-canvasPress.lastY;if(Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)>8)canvasPress.dragged=true;if(canvasPress.dragged){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.45,mobilePitch-dy*.006));canvasPress.lastX=event.clientX;canvasPress.lastY=event.clientY}});
  canvas.addEventListener('pointerup',event=>{if(!isMobile||!canvasPress||canvasPress.dragged){canvasPress=null;return}const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(destructibles,true)[0];swing(hit?.point);canvasPress=null});
@@ -237,27 +232,42 @@ export function startClassroom(game){
    pendingHits=[];
   }
   checkVictory(now);
+  if(!won&&swingingUntil>0&&now>=swingingUntil&&queuedSwing){
+   const {target}=queuedSwing;queuedSwing=null;
+   startSwing(target,now,0);
+  }
+  const swingActive=!won&&now<swingingUntil;
   const celebrating=won&&now-victoryStartedAt<2000;
   if(won&&!celebrating&&!resultShown){resultShown=true;resultActions.style.display='flex';hint.hidden=true;joy.hidden=true;}
   let walking=false;
-  if(!won&&!paused&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
-  if(!won&&!paused&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
+  if(!won&&!paused&&!swingActive&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
+  if(!won&&!paused&&!swingActive&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
   songi.userData.animate?.(now/1000,celebrating?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
   const remainingPause=releaseAt?T.MathUtils.clamp(releaseAt-now,0,hitStop):0;
-  const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingDuration,0,1);
-  const swingActive=!won&&now<swingingUntil;
-  swingSweep.visible=tipTrail.visible=swingActive;
-  hand.position.copy(restHand);palm.position.copy(restPalm);
-  hand.scale.y=palm.scale.y=bat.scale.y=1;
-  bat.position.copy(restGrip);
+  const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingLength,0,1);
+  const trailActive=swingActive&&progress>=.34&&progress<.80;
+  swingSweep.visible=tipTrail.visible=trailActive;
+  sampleIdle(now);
   if(swingActive){
-   const windup=T.MathUtils.smoothstep(progress,0,.24);
-   const sweep=T.MathUtils.smoothstep(progress,.24,.84);
-   swingArm.rotation.set(T.MathUtils.lerp(-1.38,diagonalGripPitch(sweep),windup),0,0);
-   diagonalSwingPose(sweep);
-   swingDirection.lerp(tapDirection.set(-1,.12,.30).normalize(),1-windup);
-   aimBat(swingDirection);
-   const fade=1-T.MathUtils.smoothstep(progress,.82,1);
+   sampleClassroomSwing(progress,gripPoint,direction);
+   const enter=transitionLength?T.MathUtils.smoothstep(now-swingStartedAt,0,transitionLength):1;
+   gripPoint.lerp(fromGrip,1-enter);
+   direction.lerp(fromDirection,1-enter).normalize();
+   leftGrip=T.MathUtils.lerp(fromLeftGrip,1,enter);
+   renderBatPose();
+  }else if(!won){
+   if(leftGrip===1&&recoveringAt===null)recoveringAt=now;
+   const recovery=recoveringAt===null?1:T.MathUtils.smoothstep(now-recoveringAt,0,joinLength);
+   sampleClassroomSwing(1,gripPoint,direction);
+   gripPoint.lerp(idleGrip,recovery);
+   direction.lerp(idleDirection,recovery).normalize();
+   leftGrip=1-recovery;
+   if(recovery>=1)recoveringAt=null;
+   renderBatPose();
+  }
+  if(trailActive){
+   const sweep=T.MathUtils.clamp((progress-.34)/.35,0,1);
+   const fade=1-T.MathUtils.smoothstep(progress,.69,.80);
    for(let i=0;i<=trailSegments;i++){
     const behind=sweep-i/trailSegments;
     const alpha=T.MathUtils.smoothstep(behind,0,.075)*(1-T.MathUtils.smoothstep(behind,.09,.47))*fade;
@@ -268,22 +278,24 @@ export function startClassroom(game){
     tipColors.setXYZW(i*2+1,1,1,1,tipAlpha);
    }
    trailColors.needsUpdate=tipColors.needsUpdate=true;
-  }else if(!won){
-   poseBatTap(now);
-  }else if(!celebrating){
-   swingArm.rotation.y=0;
-   aimBat(tapDirection.set(1,.35,.24));
   }
   if(celebrating){
    const celebrationAge=now-victoryStartedAt,bounce=Math.max(0,Math.sin(celebrationAge*.022))*.62;
    songi.position.y=.05+bounce;championBelt.visible=true;
    swingArm.rotation.set(-.46,0,.78);beltArm.rotation.set(-.52,0,-.72);
    parts.leg0.rotation.x=.14;parts.leg1.rotation.x=-.14;
-   aimBat(tapDirection.set(1,.35,.24));
+
   }else{
    songi.position.y=.05;championBelt.visible=false;parts.arm0.rotation.z=parts.arm1.rotation.z=0;
   }
-  const glintAge=(now-swingingUntil)/1000+.105;
+  if(won){
+   hand.position.copy(restHand);palm.position.copy(restPalm);
+   hand.quaternion.copy(restHandRotation);palm.quaternion.copy(restPalmRotation);
+   hand.scale.y=palm.scale.y=1;
+   bat.position.copy(restGrip).applyQuaternion(swingArm.quaternion).add(swingArm.position);
+   bat.quaternion.setFromUnitVectors(axis,direction.set(1,.35,.24).normalize());
+  }
+  const glintAge=(now-swingingUntil+swingLength*.31)/1000;
   glints.forEach((glint,i)=>{
    const age=glintAge-i*.024;
    glint.visible=swingingUntil>0&&age>0&&age<.21;
