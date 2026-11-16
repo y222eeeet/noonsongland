@@ -118,13 +118,26 @@ export function startClassroom(game){
  add(new T.CylinderGeometry(.20,.20,.115,8),beltSilver,0,0,.16,championBelt).rotation.x=Math.PI/2;
  for(const x of [-.60,.60])add(new T.CylinderGeometry(.08,.08,.11,8),beltGold,x,0,.11,championBelt).rotation.x=Math.PI/2;
  championBelt.position.set(-.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
- const swingArc=1.08,swingReach=6.6,trailSegments=40;
+ const swingReach=6.6,trailSegments=40;
+ const swingGrip=new T.Vector3(),swingDirection=new T.Vector3(),swingPitchAxis=new T.Vector3(1,0,0);
+ function diagonalSwingPose(sweep){
+  const yaw=T.MathUtils.lerp(1.48,-1.16,sweep);
+  const elevation=T.MathUtils.lerp(1.08,-.32,sweep);
+  swingDirection.set(Math.sin(yaw)*Math.cos(elevation),Math.sin(elevation),Math.cos(yaw)*Math.cos(elevation));
+ }
+ function diagonalGripPitch(sweep){
+  return T.MathUtils.lerp(-2.05,-1.35,sweep);
+ }
+ function trailPoint(sweep,reach){
+  diagonalSwingPose(sweep);
+  return swingGrip.copy(restGrip).applyAxisAngle(swingPitchAxis,diagonalGripPitch(sweep))
+   .add(swingArm.position).addScaledVector(swingDirection,reach);
+ }
  const trailGeometry=new T.BufferGeometry();
  const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
  const trailPoints=[],trailIndices=[];
  for(let i=0;i<=trailSegments;i++){
-  const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
-  for(const radius of [1.55,5.85])trailPoints.push(Math.sin(angle)*radius,0,Math.cos(angle)*radius);
+  for(const reach of [1.55,5.85])trailPoints.push(...trailPoint(i/trailSegments,reach).toArray());
   if(i<trailSegments){
    const j=i*2;
    trailIndices.push(j,j+1,j+2,j+1,j+3,j+2);
@@ -135,7 +148,6 @@ export function startClassroom(game){
  trailGeometry.setIndex(trailIndices);
  const sweepMaterial=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,side:T.DoubleSide});
  const swingSweep=new T.Mesh(trailGeometry,sweepMaterial);
- swingSweep.position.y=1.61;
  swingSweep.visible=false;
  songi.add(swingSweep);
  const glintCanvas=document.createElement('canvas');
@@ -154,15 +166,14 @@ export function startClassroom(game){
  const tipGeometry=trailGeometry.clone();
  const tipPoints=tipGeometry.attributes.position,tipColors=tipGeometry.attributes.color;
  for(let i=0;i<=trailSegments;i++){
-  const angle=T.MathUtils.lerp(swingArc,-swingArc,i/trailSegments);
-  for(const [edge,radius] of [5.65,5.85].entries()){
-   tipPoints.setXYZ(i*2+edge,swingArm.position.x+Math.sin(angle)*radius+Math.cos(angle)*bat.position.x,
-    swingArm.position.y+bat.position.y+.025,Math.cos(angle)*radius-Math.sin(angle)*bat.position.x);
+  for(const [edge,reach] of [5.65,5.85].entries()){
+   const point=trailPoint(i/trailSegments,reach);
+   tipPoints.setXYZ(i*2+edge,point.x,point.y+.025,point.z);
   }
  }
  const tipTrail=new T.Mesh(tipGeometry,sweepMaterial);
  tipTrail.visible=false;songi.add(tipTrail);
- const hitStop=55,hitProgress=.385;
+ const hitStop=55,hitProgress=.54;
  let pendingHits=[],hitAt=0,releaseAt=0;
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
@@ -238,11 +249,13 @@ export function startClassroom(game){
   hand.scale.y=palm.scale.y=bat.scale.y=1;
   bat.position.copy(restGrip);
   if(swingActive){
-   const sweep=T.MathUtils.smoothstep(progress,.04,.73);
-   swingArm.rotation.x=0;
-   swingArm.rotation.y=T.MathUtils.lerp(swingArc,-swingArc,sweep);
-   bat.rotation.set(Math.PI/2,0,0);
-   const fade=1-T.MathUtils.smoothstep(progress,.68,1);
+   const windup=T.MathUtils.smoothstep(progress,0,.24);
+   const sweep=T.MathUtils.smoothstep(progress,.24,.84);
+   swingArm.rotation.set(T.MathUtils.lerp(-1.38,diagonalGripPitch(sweep),windup),0,0);
+   diagonalSwingPose(sweep);
+   swingDirection.lerp(tapDirection.set(-1,.12,.30).normalize(),1-windup);
+   aimBat(swingDirection);
+   const fade=1-T.MathUtils.smoothstep(progress,.82,1);
    for(let i=0;i<=trailSegments;i++){
     const behind=sweep-i/trailSegments;
     const alpha=T.MathUtils.smoothstep(behind,0,.075)*(1-T.MathUtils.smoothstep(behind,.09,.47))*fade;
