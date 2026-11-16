@@ -51,7 +51,27 @@ export function startClassroom(game){
   }
  }
  const halfX=22,halfZ=17;
- add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,-halfZ);add(new T.BoxGeometry(halfX*2+1,9,.35),cream,0,4.3,halfZ);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,-halfX,4.3,0);add(new T.BoxGeometry(.35,9,halfZ*2+1),wall,halfX,4.3,0);
+ const wallMaterials=[cream.clone(),cream.clone(),wall.clone(),wall.clone()];
+ wallMaterials.forEach(material=>{material.side=T.DoubleSide;material.transparent=false;material.opacity=1});
+ add(new T.BoxGeometry(halfX*2+1,.35,halfZ*2+1),floorMat,0,-.2,0);
+ const classroomWalls=[
+  add(new T.BoxGeometry(halfX*2+1,9,.35),wallMaterials[0],0,4.3,-halfZ),
+  add(new T.BoxGeometry(halfX*2+1,9,.35),wallMaterials[1],0,4.3,halfZ),
+  add(new T.BoxGeometry(.35,9,halfZ*2+1),wallMaterials[2],-halfX,4.3,0),
+  add(new T.BoxGeometry(.35,9,halfZ*2+1),wallMaterials[3],halfX,4.3,0)
+ ];
+ const victoryWallRay=new T.Raycaster(),victoryLookTarget=new T.Vector3();
+ function revealOnlyBlockingWall(cameraPosition,target){
+  // Restore every wall first, then fade only the closest wall between the
+  // victory camera and Song-i. All walls behind it remain fully opaque.
+  wallMaterials.forEach(material=>{material.transparent=false;material.opacity=1;material.depthWrite=true});
+  victoryLookTarget.copy(target).sub(cameraPosition);const distance=victoryLookTarget.length();
+  if(distance<.01)return;
+  victoryWallRay.set(cameraPosition,victoryLookTarget.multiplyScalar(1/distance));
+  const blocking=victoryWallRay.intersectObjects(classroomWalls,false).find(hit=>hit.distance<distance-.05);
+  if(!blocking)return;
+  const material=blocking.object.material;material.transparent=true;material.opacity=.18;material.depthWrite=false;
+ }
  add(new T.BoxGeometry(2.3,5.2,.18),wood,17.8,2.45,-halfZ+.24);
  const destructibles=[],victoryTargets=[],obstacles=[];
  function destructible(group,bounds,color='#d7ad8c',required=true){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);if(required)victoryTargets.push(group);obstacles.push({group,...bounds});return group}
@@ -215,7 +235,8 @@ export function startClassroom(game){
   songi.rotation.y=0;back.hidden=true;
   const {x,y,z}=songi.position;
   camera.position.set(x,y+6.4,z+12);
-  camera.lookAt(x,y+2.05,z);
+  victoryLookTarget.set(x,y+2.05,z);camera.lookAt(victoryLookTarget);
+  revealOnlyBlockingWall(camera.position,victoryLookTarget);
  }
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();if(!event.repeat)swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
