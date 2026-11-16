@@ -6,12 +6,15 @@ const isMobile=matchMedia('(hover:none) and (pointer:coarse)').matches;
 
 export function startClassroom(game){
  game.replaceChildren();
- const canvas=document.createElement('canvas'),back=document.createElement('button'),hint=document.createElement('div'),status=document.createElement('div'),joy=document.createElement('div'),stick=document.createElement('div');
+ const canvas=document.createElement('canvas'),back=document.createElement('button'),hint=document.createElement('div'),status=document.createElement('div'),joy=document.createElement('div'),stick=document.createElement('div'),resultActions=document.createElement('div');
  canvas.style.cssText='display:block;width:100%;height:100%;touch-action:none';
  back.textContent='← 캠퍼스로 돌아가기';back.style.cssText="position:absolute;z-index:2;top:max(16px,env(safe-area-inset-top));left:14px;padding:10px 14px;border:1px solid #ffffffcc;border-radius:999px;background:#fffaf8e8;color:#5f5473;font:800 13px ui-rounded,'Apple SD Gothic Neo',sans-serif";
  hint.textContent=isMobile?'조이스틱으로 이동 · 가구를 눌러 배트 휘두르기':'방향키 · WASD로 이동 / Space로 배트 휘두르기';hint.style.cssText="position:absolute;z-index:2;right:14px;bottom:max(18px,env(safe-area-inset-bottom));left:14px;padding:10px 13px;border-radius:14px;background:#fffaf8d9;color:#5f5473;font:800 12px ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;pointer-events:none";
- status.hidden=true;status.style.cssText="position:absolute;z-index:2;top:23%;right:14px;left:14px;color:#76538f;font:900 25px/1.35 ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;text-shadow:0 2px 0 #fff";joy.style.cssText='position:absolute;z-index:2;bottom:max(28px,calc(env(safe-area-inset-bottom) + 12px));left:23px;width:104px;height:104px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff36;touch-action:none;display:none';stick.style.cssText='position:absolute;top:27px;left:27px;width:46px;height:46px;border:2px solid #ffffffaa;border-radius:50%;background:#b596d4aa';joy.append(stick);if(isMobile)joy.style.display='block';game.append(canvas,back,hint,status,joy);
+ status.hidden=true;status.style.cssText="position:absolute;z-index:2;top:23%;right:14px;left:14px;color:#76538f;font:900 25px/1.35 ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;text-shadow:0 2px 0 #fff";joy.style.cssText='position:absolute;z-index:2;bottom:max(28px,calc(env(safe-area-inset-bottom) + 12px));left:23px;width:104px;height:104px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff36;touch-action:none;display:none';stick.style.cssText='position:absolute;top:27px;left:27px;width:46px;height:46px;border:2px solid #ffffffaa;border-radius:50%;background:#b596d4aa';joy.append(stick);if(isMobile)joy.style.display='block';
+ resultActions.hidden=true;resultActions.style.cssText="position:absolute;z-index:3;right:14px;bottom:max(24px,env(safe-area-inset-bottom));left:14px;display:flex;gap:10px";resultActions.innerHTML=`<button data-result="campus" style="flex:1;padding:14px 10px;border:2px solid #fff;border-radius:16px;background:#fffaf8;color:#5f5473;font:800 14px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #5c477733">캠퍼스로 돌아가기</button><button data-result="retry" style="flex:1;padding:14px 10px;border:2px solid #fff;border-radius:16px;background:#a98ad0;color:#fff;font:800 14px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #5c477744">강의실 다시 부수기</button>`;
+ game.append(canvas,back,hint,status,joy,resultActions);
  back.addEventListener('click',()=>location.assign('/'));
+ resultActions.addEventListener('click',event=>{const action=event.target.closest('button')?.dataset.result;if(action==='campus')location.assign('/');if(action==='retry')location.reload()});
 
  const scene=new T.Scene();scene.background=new T.Color('#eee8f2');scene.fog=new T.Fog('#eee8f2',32,90);
  const camera=new T.PerspectiveCamera(48,1,.1,120),renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;
@@ -65,11 +68,14 @@ export function startClassroom(game){
  scene.add(professor);
  const professorStart=professor.position.clone();
  const professorTarget=new T.Vector3(17.25,0,-15.3);
- let swingCount=0,professorPhase='waiting',won=false;
+ let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
  const swingDuration=310;
- const swingArm=songi.userData.parts.arm1;
+ // The bat stays in Song-i's left hand; the right hand is reserved for the
+ // champion belt shown during the victory pose.
+ const swingArm=songi.userData.parts.arm0;
+ const beltArm=songi.userData.parts.arm1;
  const hand=swingArm.children[0];
  const bat=new T.Group(),batWood=mat('#a77558'),batGrip=mat('#765046');
  // Put the grip at the pivot so rotating the bat keeps it in Song-i's hand.
@@ -78,6 +84,12 @@ export function startClassroom(game){
  bat.position.set(0,-.14,.04).applyQuaternion(hand.quaternion).add(hand.position);
  bat.rotation.set(.18,0,-1.05);
  swingArm.add(bat);
+ const championBelt=new T.Group(),beltStrap=mat('#24222d',.55),beltGold=mat('#f5cf58',.38),beltSilver=mat('#fff4c8',.32);
+ add(new T.BoxGeometry(1.72,.42,.10),beltStrap,0,0,0,championBelt);
+ add(new T.CylinderGeometry(.34,.34,.10,8),beltGold,0,0,.10,championBelt).rotation.x=Math.PI/2;
+ add(new T.CylinderGeometry(.20,.20,.115,8),beltSilver,0,0,.16,championBelt).rotation.x=Math.PI/2;
+ for(const x of [-.60,.60])add(new T.CylinderGeometry(.08,.08,.11,8),beltGold,x,0,.11,championBelt).rotation.x=Math.PI/2;
+ championBelt.position.set(.40,-.13,.31);championBelt.rotation.set(.08,0,-.28);championBelt.visible=false;beltArm.add(championBelt);
  const swingArc=1.08,trailSegments=40;
  const trailGeometry=new T.BufferGeometry();
  const trailColors=new T.Float32BufferAttribute(new Float32Array((trailSegments+1)*8),4);
@@ -128,8 +140,7 @@ export function startClassroom(game){
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
  function swing(target){
-  const now=performance.now();if(now<swingingUntil)return;swingingUntil=now+swingDuration;releaseAt=0;
-  if(won)return;
+  const now=performance.now();if(now<swingingUntil||won)return;swingingUntil=now+swingDuration;releaseAt=0;
   swingCount++;
   if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
@@ -149,8 +160,8 @@ export function startClassroom(game){
   if(professorPhase==='shaking'){
    // Keep the professor upright: a tiny sideways shuffle and fine tremor read
    // as fear without the wide, fan-like body rotation.
-   professor.position.x=professorStart.x+Math.sin(now*.022)*.12+Math.sin(now*.081)*.018;
-   professor.position.z=professorStart.z+Math.cos(now*.067)*.012;
+   professor.position.x=professorStart.x+Math.sin(now*.022)*.06+Math.sin(now*.081)*.009;
+   professor.position.z=professorStart.z+Math.cos(now*.067)*.006;
    return;
   }
   professorDirection.subVectors(professorTarget,professor.position).setY(0);
@@ -163,7 +174,12 @@ export function startClassroom(game){
   professor.position.addScaledVector(professorDirection,dt*7.5);
   professor.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
  }
- function checkVictory(){if(won||!victoryTargets.every(object=>object.userData.destroyed))return;won=true;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!'}
+ function checkVictory(now){
+  if(won||!victoryTargets.every(object=>object.userData.destroyed))return;
+  won=true;victoryStartedAt=now;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!';
+  // Face the dedicated victory camera so the front expression is always shown.
+  songi.rotation.y=0;back.hidden=true;
+ }
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
  canvas.addEventListener('pointermove',event=>{if(!isMobile||!canvasPress)return;const dx=event.clientX-canvasPress.lastX,dy=event.clientY-canvasPress.lastY;if(Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)>8)canvasPress.dragged=true;if(canvasPress.dragged){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.45,mobilePitch-dy*.006));canvasPress.lastX=event.clientX;canvasPress.lastY=event.clientY}});
@@ -179,13 +195,16 @@ export function startClassroom(game){
    shakeStrength=Math.min(.38,.14+pendingHits.length*.07);shakeUntil=now+260;
    pendingHits=[];
   }
+  checkVictory(now);
+  const celebrating=won&&now-victoryStartedAt<2000;
+  if(won&&!celebrating&&!resultShown){resultShown=true;resultActions.hidden=false;hint.hidden=true;joy.hidden=true;}
   let walking=false;
-  if(!paused&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
-  if(!paused&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
-  checkVictory();songi.userData.animate?.(now/1000,won?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
+  if(!won&&!paused&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
+  if(!won&&!paused&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
+  songi.userData.animate?.(now/1000,celebrating?'win':'idle',0);const parts=songi.userData.parts,walkSwing=walking?Math.sin(now*.011)*.55:0;parts.arm0.rotation.x=parts.leg1.rotation.x=walkSwing;parts.arm1.rotation.x=parts.leg0.rotation.x=-walkSwing;
   const remainingPause=releaseAt?T.MathUtils.clamp(releaseAt-now,0,hitStop):0;
   const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingDuration,0,1);
-  const swingActive=now<swingingUntil;
+  const swingActive=!won&&now<swingingUntil;
   swingSweep.visible=tipTrail.visible=swingActive;
   if(swingActive){
    const sweep=T.MathUtils.smoothstep(progress,.04,.73);
@@ -203,9 +222,18 @@ export function startClassroom(game){
     tipColors.setXYZW(i*2+1,1,1,1,tipAlpha);
    }
    trailColors.needsUpdate=tipColors.needsUpdate=true;
-  }else{
+  }else if(!celebrating){
    swingArm.rotation.y=0;
    bat.rotation.set(.18,0,-1.05);
+  }
+  if(celebrating){
+   const celebrationAge=now-victoryStartedAt,bounce=Math.max(0,Math.sin(celebrationAge*.022))*.62;
+   songi.position.y=.05+bounce;championBelt.visible=true;
+   parts.arm0.rotation.set(-.46,0,-.78);parts.arm1.rotation.set(-.52,0,.72);
+   parts.leg0.rotation.x=.14;parts.leg1.rotation.x=-.14;
+   bat.rotation.set(.35,0,.92);
+  }else{
+   songi.position.y=.05;championBelt.visible=false;parts.arm0.rotation.z=parts.arm1.rotation.z=0;
   }
   const glintAge=(now-swingingUntil)/1000+.105;
   glints.forEach((glint,i)=>{
@@ -219,6 +247,15 @@ export function startClassroom(game){
    glint.scale.setScalar((.32-i*.055)*fade);
   });
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
-  const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);renderer.render(scene,camera);
+  if(celebrating){
+   if(camera.fov!==38){camera.fov=38;camera.updateProjectionMatrix()}
+   // Song-i faces local +Z here, so this is a close front-facing victory shot.
+   camera.position.set(songi.position.x,songi.position.y+3.1,songi.position.z+8.4);
+   camera.lookAt(songi.position.x,songi.position.y+2.25,songi.position.z);
+  }else{
+   if(camera.fov!==48){camera.fov=48;camera.updateProjectionMatrix()}
+   const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);
+  }
+  renderer.render(scene,camera);
  }frame();
 }
