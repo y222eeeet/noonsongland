@@ -73,7 +73,7 @@ export function startClassroom(game){
  let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
- const swingLength=360,joinLength=55,batTip=3.645;
+ const swingLength=520,joinLength=70,batTip=3.645;
  const swingArm=songi.userData.parts.arm1,beltArm=songi.userData.parts.arm0;
  const hand=swingArm.children[0],palm=beltArm.children[0];
  const restHand=hand.position.clone(),restPalm=palm.position.clone();
