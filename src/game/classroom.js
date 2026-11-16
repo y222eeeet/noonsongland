@@ -216,8 +216,10 @@ export function startClassroom(game){
  function checkVictory(now){
   if(won||!victoryTargets.every(object=>object.userData.destroyed))return;
   won=true;victoryStartedAt=now;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!';
-  // Face the dedicated victory camera so the front expression is always shown.
   songi.rotation.y=0;back.hidden=true;
+  const {x,y,z}=songi.position;
+  camera.position.set(x,y+6.4,z+12);
+  camera.lookAt(x,y+2.05,z);
  }
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
@@ -293,12 +295,7 @@ export function startClassroom(game){
    glint.scale.setScalar((.32-i*.055)*fade);
   });
   for(const object of destructibles)if(object.userData.destroyed){const age=(now-object.userData.destroyedAt)/1000;object.rotation.z+=dt*7;object.position.y=Math.max(-1.4,object.position.y-dt*5);object.scale.setScalar(Math.max(.1,1-age*.7));}updateProfessor(now,dt);updateImpacts(now,dt);
-  if(won){
-   // Match the sled-finish composition: a relaxed front-facing mid shot.
-   if(camera.fov!==48){camera.fov=48;camera.updateProjectionMatrix()}
-   camera.position.set(songi.position.x,songi.position.y+6.4,songi.position.z+12);
-   camera.lookAt(songi.position.x,songi.position.y+2.05,songi.position.z);
-  }else{
+  if(!won){
    if(camera.fov!==48){camera.fov=48;camera.updateProjectionMatrix()}
    const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);
   }
