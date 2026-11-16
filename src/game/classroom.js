@@ -84,27 +84,34 @@ export function startClassroom(game){
  bat.rotation.set(.18,0,-1.05);
  swingArm.add(bat);
  const palm=beltArm.children[0];
+ const restHand=hand.position.clone(),restPalm=palm.position.clone(),restGrip=bat.position.clone();
+ const handForward=restHand.clone().normalize(),palmForward=restPalm.clone().normalize();
  const batonAxis=new T.Vector3(0,1,0),tapDirection=new T.Vector3();
  const tapLift=new T.Quaternion(),inverseArm=new T.Quaternion();
  const tapAxis=new T.Vector3(0,0,1);
  const palmContact=new T.Vector3(),gripCenter=new T.Vector3();
  const tapStartedAt=performance.now();
+ function aimBat(direction){
+  direction.normalize().applyQuaternion(inverseArm.copy(swingArm.quaternion).invert());
+  bat.quaternion.setFromUnitVectors(batonAxis,direction);
+ }
  function poseBatTap(now){
-  swingArm.rotation.set(-1.46,0,0);
-  beltArm.rotation.set(-1.46,0,0);
-  palmContact.copy(palm.position).addScaledVector(restPalmDirection,.16)
+  swingArm.rotation.set(-1.38,0,0);
+  beltArm.rotation.set(-1.38,0,0);
+  hand.position.copy(restHand).addScaledVector(handForward,.46);
+  palm.position.copy(restPalm).addScaledVector(palmForward,.59);
+  hand.scale.y=2.65;palm.scale.y=2.95;
+  bat.position.copy(restGrip).addScaledVector(handForward,.86);
+  palmContact.copy(restPalm).addScaledVector(palmForward,1.00)
    .applyQuaternion(beltArm.quaternion).add(beltArm.position);
   gripCenter.copy(bat.position).applyQuaternion(swingArm.quaternion).add(swingArm.position);
-  palmContact.y+=.27;
+  palmContact.y+=.35;
   tapDirection.subVectors(palmContact,gripCenter);
   bat.scale.y=tapDirection.length()/2.70;
   const beat=((now-tapStartedAt)%1000)/1000;
-  const lift=.44*T.MathUtils.smoothstep(beat,.53,.82)*(1-T.MathUtils.smoothstep(beat,.84,1));
-  tapDirection.normalize().applyQuaternion(tapLift.setFromAxisAngle(tapAxis,-lift));
-  tapDirection.applyQuaternion(inverseArm.copy(swingArm.quaternion).invert());
-  bat.quaternion.setFromUnitVectors(batonAxis,tapDirection);
+  const lift=.34*T.MathUtils.smoothstep(beat,.53,.82)*(1-T.MathUtils.smoothstep(beat,.84,1));
+  aimBat(tapDirection.applyQuaternion(tapLift.setFromAxisAngle(tapAxis,-lift)));
  }
- const restPalmDirection=palm.position.clone().normalize();
  const championBelt=new T.Group(),beltStrap=mat('#24222d',.55),beltGold=mat('#f5cf58',.38),beltSilver=mat('#fff4c8',.32);
  add(new T.BoxGeometry(1.72,.42,.10),beltStrap,0,0,0,championBelt);
  add(new T.CylinderGeometry(.34,.34,.10,8),beltGold,0,0,.10,championBelt).rotation.x=Math.PI/2;
@@ -227,7 +234,9 @@ export function startClassroom(game){
   const progress=T.MathUtils.clamp(1-(swingingUntil-now-remainingPause)/swingDuration,0,1);
   const swingActive=!won&&now<swingingUntil;
   swingSweep.visible=tipTrail.visible=swingActive;
-  bat.scale.y=1;
+  hand.position.copy(restHand);palm.position.copy(restPalm);
+  hand.scale.y=palm.scale.y=bat.scale.y=1;
+  bat.position.copy(restGrip);
   if(swingActive){
    const sweep=T.MathUtils.smoothstep(progress,.04,.73);
    swingArm.rotation.x=0;
@@ -248,14 +257,14 @@ export function startClassroom(game){
    poseBatTap(now);
   }else if(!celebrating){
    swingArm.rotation.y=0;
-   bat.rotation.set(.35,0,.92);
+   aimBat(tapDirection.set(1,.35,.24));
   }
   if(celebrating){
    const celebrationAge=now-victoryStartedAt,bounce=Math.max(0,Math.sin(celebrationAge*.022))*.62;
    songi.position.y=.05+bounce;championBelt.visible=true;
    swingArm.rotation.set(-.46,0,.78);beltArm.rotation.set(-.52,0,-.72);
    parts.leg0.rotation.x=.14;parts.leg1.rotation.x=-.14;
-   bat.rotation.set(.35,0,.92);
+   aimBat(tapDirection.set(1,.35,.24));
   }else{
    songi.position.y=.05;championBelt.visible=false;parts.arm0.rotation.z=parts.arm1.rotation.z=0;
   }
