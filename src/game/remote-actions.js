@@ -16,6 +16,8 @@ export function createRemoteActions(avatar, scene) {
  const forearm=new T.Mesh(geometry('arm',()=>new T.CapsuleGeometry(.15,1,5,10)),cream);
  const hand=new T.Mesh(geometry('hand',()=>new T.SphereGeometry(.19,12,8)),cream);
  const thumb=new T.Mesh(geometry('thumb',()=>new T.SphereGeometry(.095,10,8)),cream);thumb.position.set(.14,0,.06);
+ cigarette.position.set(.07,.14,.08);
+ cigarette.rotation.y=-.32;
  grip.add(hand,thumb,cigarette);smokingArm.add(upperArm,forearm,grip);avatar.add(smokingArm);smokingArm.visible=false;
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
  const shoulder=new T.Vector3(-.57,2.03,.02),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
@@ -99,12 +101,9 @@ export function createRemoteActions(avatar, scene) {
     bottle.rotation.set(-1.34*handLift,0,.15*(1-handLift));
     grip.rotation.x=0;
    }else{
-    handPosition.set(-.95+.73*handLift,1.75+.77*handLift,1.12+.12*handLift);
+    handPosition.set(-.95+.85*handLift,1.75+.83*handLift,1.12+.04*handLift);
     elbow.set(-1.05,1.86+.30*handLift,.95+.15*handLift);
     grip.rotation.x=.30*(1-handLift);
-    // Pull the filter back to the lips as the hand reaches the face.
-    cigarette.position.set(.22*handLift,.13*handLift,-.35*handLift);
-    cigarette.rotation.y=-.56*handLift;
    }
    grip.position.copy(handPosition);
    connectArm(upperArm,shoulder,elbow);connectArm(forearm,elbow,handPosition);
