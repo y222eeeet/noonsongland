@@ -13,7 +13,7 @@ export function startClassroom(game){
  hint.textContent=isMobile?'조이스틱으로 이동 · 가구를 눌러 배트 휘두르기':'방향키 · WASD로 이동 / Space로 배트 휘두르기';hint.style.cssText="position:absolute;z-index:2;right:14px;bottom:max(18px,env(safe-area-inset-bottom));left:14px;padding:10px 13px;border-radius:14px;background:#fffaf8d9;color:#5f5473;font:800 12px ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;pointer-events:none";
  status.hidden=true;status.style.cssText="position:absolute;z-index:2;top:23%;right:14px;left:14px;color:#76538f;font:900 25px/1.35 ui-rounded,'Apple SD Gothic Neo',sans-serif;text-align:center;text-shadow:0 2px 0 #fff";joy.style.cssText='position:absolute;z-index:2;bottom:max(28px,calc(env(safe-area-inset-bottom) + 12px));left:23px;width:104px;height:104px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff36;touch-action:none;display:none';stick.style.cssText='position:absolute;top:27px;left:27px;width:46px;height:46px;border:2px solid #ffffffaa;border-radius:50%;background:#b596d4aa';joy.append(stick);if(isMobile)joy.style.display='block';
  // Keep this out of layout from the first frame. The inline display value is
- // toggled only after the two-second victory celebration has completed.
+ // toggled only after the victory celebration has completed.
  resultActions.style.cssText="position:absolute;z-index:3;right:14px;bottom:max(24px,env(safe-area-inset-bottom));left:14px;display:none;gap:10px";resultActions.innerHTML=`<button data-result="campus" style="flex:1;padding:14px 10px;border:2px solid #fff;border-radius:16px;background:#fffaf8;color:#5f5473;font:800 14px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #5c477733">캠퍼스로 돌아가기</button><button data-result="retry" style="flex:1;padding:14px 10px;border:2px solid #fff;border-radius:16px;background:#a98ad0;color:#fff;font:800 14px ui-rounded,'Apple SD Gothic Neo',sans-serif;box-shadow:0 8px 20px #5c477744">강의실 다시 부수기</button>`;
  game.append(canvas,back,hint,status,joy,resultActions);
  back.addEventListener('click',()=>location.assign('/'));
@@ -259,7 +259,8 @@ export function startClassroom(game){
    startSwing(target,now,0);
   }
   const swingActive=!won&&now<swingingUntil;
-  const celebrating=won&&now-victoryStartedAt<2000;
+  const celebrationAge=now-victoryStartedAt;
+  const celebrating=won&&celebrationAge<5000;
   if(won&&!celebrating&&!resultShown){resultShown=true;resultActions.style.display='flex';hint.hidden=true;joy.hidden=true;}
   let walking=false;
   if(!won&&!paused&&!swingActive&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
@@ -305,7 +306,8 @@ export function startClassroom(game){
    trailColors.needsUpdate=tipColors.needsUpdate=true;
   }
   if(celebrating){
-   const celebrationAge=now-victoryStartedAt,bounce=Math.max(0,Math.sin(celebrationAge*.022))*.62;
+   const jumpPeriod=300,jumpCount=3;
+   const bounce=celebrationAge<jumpPeriod*jumpCount?Math.sin(Math.PI*(celebrationAge%jumpPeriod)/jumpPeriod)*.62:0;
    songi.position.y=.05+bounce;championBelt.visible=true;
    swingArm.rotation.set(-.46,0,.78);beltArm.rotation.set(-.52,0,-.72);
    parts.leg0.rotation.x=.14;parts.leg1.rotation.x=-.14;
