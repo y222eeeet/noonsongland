@@ -25,7 +25,7 @@ export function startClassroom(game){
  const camera=new T.PerspectiveCamera(48,1,.1,120),renderer=new T.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=T.SRGBColorSpace;
  scene.add(new T.HemisphereLight('#fff8ed','#887a9c',2.3));const sun=new T.DirectionalLight('#fff2d7',2.7);sun.position.set(-12,20,10);scene.add(sun);
  const mat=(color,roughness=.82)=>new T.MeshStandardMaterial({color,roughness});
- const cream=mat('#fff8ed'),wall=mat('#e7dced'),floorMat=mat('#cdbba7'),wood=mat('#b5896d'),chairMat=mat('#b99ddd'),boardMat=mat('#496f61');
+ const cream=mat('#fff8ed'),wall=mat('#e7dced'),floorMat=mat('#cdbba7'),wood=mat('#b5896d'),chairMat=mat('#b99ddd'),boardMat=new T.MeshBasicMaterial({color:'#3c413d'});
  const add=(geometry,material,x,y,z,parent=scene)=>{const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);parent.add(mesh);return mesh};
  const dustGeometry=new T.SphereGeometry(.13,8,6),impactBursts=[];let shakeUntil=0,shakeStrength=0;
  function impact(position,color,now){
