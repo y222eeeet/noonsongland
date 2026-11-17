@@ -8,5 +8,5 @@ export function placeSmokePuff(puff, index, progress, size = 1) {
   progress * (.75 + .65 * variation),
   progress * (.52 + .33 * variation),
  );
- puff.scale.set(size * (.38 + spread * .94), size * (.34 + spread * .76), size * (.38 + spread * .86));
+ puff.scale.setScalar(size * (.38 + spread * .86));
 }
