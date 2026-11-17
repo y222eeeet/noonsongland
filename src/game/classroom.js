@@ -1,4 +1,4 @@
-import { createClassroomChalk } from './classroom-chalk.js';
+import chalkboardUrl from '../assets/classroom-chalkboard.webp';
 import { createClassroomWallMarks } from './classroom-wall-marks.js';
 import { sampleClassroomSwing } from './classroom-swing.js';
 import * as T from 'three';
@@ -98,7 +98,10 @@ export function startClassroom(game){
  board.position.set(0,0,-halfZ+.24);scene.add(board);
  add(new T.BoxGeometry(boardWidth,boardHeight,.16),boardMat,0,boardCenter,0,board);
  add(new T.BoxGeometry(10.8*1.5,.22,.45),wood,0,boardCenter-boardHeight/2,.12,board);
- const chalk=new T.MeshBasicMaterial({map:createClassroomChalk(),transparent:true,depthWrite:false});
+ const chalkTexture=new T.TextureLoader().load(chalkboardUrl);
+ chalkTexture.colorSpace=T.SRGBColorSpace;
+ chalkTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+ const chalk=new T.MeshBasicMaterial({map:chalkTexture});
  add(new T.PlaneGeometry(boardWidth,boardHeight),chalk,0,boardCenter,.085,board);
  function desk(x,z){
   const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
