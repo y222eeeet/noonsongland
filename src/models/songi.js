@@ -4,6 +4,16 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 // The snowflake shell, cranium and curved face are expensive to tessellate.
 // They never change shape, so all Song-i instances share one immutable set.
 let sharedCoreGeometry;
+const sharedDetailGeometry=new Map();
+
+function detailGeometry(key,build){
+  if(!sharedDetailGeometry.has(key)){
+    const geometry=build();
+    geometry.userData.sharedSongiGeometry=true;
+    sharedDetailGeometry.set(key,geometry);
+  }
+  return sharedDetailGeometry.get(key);
+}
 
 // A continuous beveled snowflake shell; front is +Z, Y remains upright.
 export function createSongi() {
@@ -97,69 +107,81 @@ export function createSongi() {
   parts.face=mesh(fg,faceMaterial,[0,2.99,.46]);
   for (let i=0;i<2;i++) {
     const x=i? .38:-.38, eye=new T.Group();eye.position.set(x,3.05,.69);root.add(eye); parts['eye'+i]=eye;
-    mesh(new T.CapsuleGeometry(.085,.25,4,10),purple,[0,0,0],eye).scale.z=.48;
-    const lash=mesh(new T.CapsuleGeometry(.028,.09,4,8),purple,[-.062,.205,0],eye);lash.rotation.z=.50;lash.scale.z=.5;
-    mesh(new T.SphereGeometry(.14,12,8),pink,[x*2,2.77,.60]).scale.set(1,.62,.22);
+    mesh(detailGeometry('eye-'+i,()=>new T.CapsuleGeometry(.085,.25,4,10)),purple,[0,0,0],eye).scale.z=.48;
+    const lash=mesh(detailGeometry('lash-'+i,()=>new T.CapsuleGeometry(.028,.09,4,8)),purple,[-.062,.205,0],eye);lash.rotation.z=.50;lash.scale.z=.5;
+    mesh(detailGeometry('cheek-'+i,()=>new T.SphereGeometry(.14,12,8)),pink,[x*2,2.77,.60]).scale.set(1,.62,.22);
   }
-  const smile=new T.CatmullRomCurve3([new T.Vector3(-.27,.035,0),new T.Vector3(-.16,-.07,0),new T.Vector3(0,-.10,0),new T.Vector3(.16,-.07,0),new T.Vector3(.27,.035,0)]);
-  parts.mouth=mesh(new T.TubeGeometry(smile,20,.032,8,false),purple,[0,2.65,.70]);
+  const smileGeometry=detailGeometry('smile',()=>{
+    const smile=new T.CatmullRomCurve3([new T.Vector3(-.27,.035,0),new T.Vector3(-.16,-.07,0),new T.Vector3(0,-.10,0),new T.Vector3(.16,-.07,0),new T.Vector3(.27,.035,0)]);
+    return new T.TubeGeometry(smile,20,.032,8,false);
+  });
+  parts.mouth=mesh(smileGeometry,purple,[0,2.65,.70]);
   const headMeshes=root.children.slice();
-  parts.body=mesh(new T.CylinderGeometry(.49,.84,1.10,16,1),lavender,[0,1.65,0]);
-  const hem=mesh(new T.TorusGeometry(.78,.065,4,24),lavender,[0,1.10,0]);hem.rotation.x=Math.PI/2;
+  parts.body=mesh(detailGeometry('dress',()=>new T.CylinderGeometry(.49,.84,1.10,16,1)),lavender,[0,1.65,0]);
+  const hem=mesh(detailGeometry('hem',()=>new T.TorusGeometry(.78,.065,4,24)),lavender,[0,1.10,0]);hem.rotation.x=Math.PI/2;
   for(let i=0;i<2;i++) {
     const sign=i?1:-1;
     const arm=new T.Group();arm.position.set(sign*.57,2.03,0);root.add(arm);parts['arm'+i]=arm;
-    const hand=mesh(new T.CapsuleGeometry(.16,.36,5,10),cream,[sign*.17,-.27,0],arm);hand.rotation.z=sign*.55;
+    const hand=mesh(detailGeometry('arm',()=>new T.CapsuleGeometry(.16,.36,5,10)),cream,[sign*.17,-.27,0],arm);hand.rotation.z=sign*.55;
     const leg=new T.Group();leg.position.set(sign*.29,.94,0);root.add(leg);parts['leg'+i]=leg;
-    mesh(new T.CapsuleGeometry(.155,.34,4,10),cream,[0,-.28,0],leg);
-    mesh(new T.SphereGeometry(.235,12,8),pink,[0,-.72,.095],leg).scale.set(1,.62,1.28);
-    mesh(new T.SphereGeometry(.24,12,8),cream,[sign*.23,2.12,.43]).scale.set(1,.55,.32);
+    mesh(detailGeometry('leg',()=>new T.CapsuleGeometry(.155,.34,4,10)),cream,[0,-.28,0],leg);
+    mesh(detailGeometry('shoe',()=>new T.SphereGeometry(.235,12,8)),pink,[0,-.72,.095],leg).scale.set(1,.62,1.28);
+    mesh(detailGeometry('collar',()=>new T.SphereGeometry(.24,12,8)),cream,[sign*.23,2.12,.43]).scale.set(1,.55,.32);
   }
-  const sCurve=new T.CatmullRomCurve3([[.15,.27],[-.02,.32],[-.20,.20],[-.13,.07],[.12,-.04],[.18,-.19],[.02,-.30],[-.18,-.25]].map(([x,y])=>new T.Vector3(x,y,0)));
-  const emblemGeometry=new T.TubeGeometry(sCurve,28,.065,8,false);
-  const emblemVertices=emblemGeometry.attributes.position,sector=Math.PI*2/16;
-  for(let i=0;i<emblemVertices.count;i++){
-    const x=emblemVertices.getX(i),y=emblemVertices.getY(i)-.04;
-    // Follow the actual tapered, 16-sided dress surface, including its slope.
-    const radius=.665-y*(.35/1.10),theta=Math.asin(T.MathUtils.clamp(x/radius,-1,1));
-    const faceAngle=(Math.floor(theta/sector)+.5)*sector;
-    const surface=(radius*Math.cos(sector/2)-x*Math.sin(faceAngle))/Math.cos(faceAngle);
-    emblemVertices.setXYZ(i,x,y,surface+.025+emblemVertices.getZ(i)*.55);
-  }
-  emblemGeometry.computeVertexNormals();
+  const emblemGeometry=detailGeometry('emblem',()=>{
+    const sCurve=new T.CatmullRomCurve3([[.15,.27],[-.02,.32],[-.20,.20],[-.13,.07],[.12,-.04],[.18,-.19],[.02,-.30],[-.18,-.25]].map(([x,y])=>new T.Vector3(x,y,0)));
+    const emblemGeometry=new T.TubeGeometry(sCurve,28,.065,8,false);
+    const emblemVertices=emblemGeometry.attributes.position,sector=Math.PI*2/16;
+    for(let i=0;i<emblemVertices.count;i++){
+      const x=emblemVertices.getX(i),y=emblemVertices.getY(i)-.04;
+      // Follow the actual tapered, 16-sided dress surface, including its slope.
+      const radius=.665-y*(.35/1.10),theta=Math.asin(T.MathUtils.clamp(x/radius,-1,1));
+      const faceAngle=(Math.floor(theta/sector)+.5)*sector;
+      const surface=(radius*Math.cos(sector/2)-x*Math.sin(faceAngle))/Math.cos(faceAngle);
+      emblemVertices.setXYZ(i,x,y,surface+.025+emblemVertices.getZ(i)*.55);
+    }
+    emblemGeometry.computeVertexNormals();
+    return emblemGeometry;
+  });
   parts.emblem=mesh(emblemGeometry,gold,[0,0,0],parts.body);
   const breathFeatures=[];
-  function expressionCurve(points,radius){
-    const curve=new T.CatmullRomCurve3(points.map(([x,y])=>new T.Vector3(x,y,0)));
-    const o=mesh(new T.TubeGeometry(curve,20,radius,8,false),purple,[0,0,.7]);
+  function expressionCurve(key,points,radius){
+    const geometry=detailGeometry(key,()=>{
+      const curve=new T.CatmullRomCurve3(points.map(([x,y])=>new T.Vector3(x,y,0)));
+      return new T.TubeGeometry(curve,20,radius,8,false);
+    });
+    const o=mesh(geometry,purple,[0,0,.7]);
     breathFeatures.push(o);return o;
   }
   const smallEyes=[],closedEyes=[],happyEyes=[],brows=[];
   for(const sign of [-1,1]){
     const x=sign*.38;
-    const small=mesh(new T.CapsuleGeometry(.075,.13,4,10),purple,[x,3.04,.7]);small.scale.z=.48;smallEyes.push(small);breathFeatures.push(small);
-    closedEyes.push(expressionCurve([[x-.12,3.015],[x,2.995],[x+.12,3.015]],.025));
-    happyEyes.push(expressionCurve([[x-.14,3.01],[x-.085,3.095],[x,3.13],[x+.085,3.095],[x+.14,3.01]],.029));
+    const small=mesh(detailGeometry('small-eye-'+sign,()=>new T.CapsuleGeometry(.075,.13,4,10)),purple,[x,3.04,.7]);small.scale.z=.48;smallEyes.push(small);breathFeatures.push(small);
+    closedEyes.push(expressionCurve('closed-eye-'+sign,[[x-.12,3.015],[x,2.995],[x+.12,3.015]],.025));
+    happyEyes.push(expressionCurve('happy-eye-'+sign,[[x-.14,3.01],[x-.085,3.095],[x,3.13],[x+.085,3.095],[x+.14,3.01]],.029));
     // Raised inner ends, lowered outer ends: the relaxed sigh in the reference.
-    brows.push(expressionCurve([[sign*.23,3.40],[sign*.33,3.32],[sign*.50,3.29]],.027));
+    brows.push(expressionCurve('brow-'+sign,[[sign*.23,3.40],[sign*.33,3.32],[sign*.50,3.29]],.027));
   }
-  const openMouth=mesh(new T.CircleGeometry(.135,32),purple,[0,2.65,.7]);openMouth.scale.y=1.2;breathFeatures.push(openMouth);
-  const mouthRim=mesh(new T.TorusGeometry(.135,.023,8,32),purple,[0,2.65,.705]);mouthRim.scale.y=1.2;breathFeatures.push(mouthRim);
-  const exhaleMouth=mesh(new T.CircleGeometry(.075,24),purple,[0,2.65,.7]);exhaleMouth.scale.set(1.25,.65,1);breathFeatures.push(exhaleMouth);
-  const exhaleLip=mesh(new T.TorusGeometry(.075,.025,8,24),purple,[0,2.65,.705]);exhaleLip.scale.set(1.25,.65,1);breathFeatures.push(exhaleLip);
-  const grin=new T.Shape();
-  grin.moveTo(-.28,.07);grin.quadraticCurveTo(0,.035,.28,.07);
-  grin.bezierCurveTo(.25,-.07,.15,-.165,0,-.17);
-  grin.bezierCurveTo(-.15,-.165,-.25,-.07,-.28,.07);
-  const grinOutline=grin.getPoints(16).slice(0,-1);
-  const grinCenter=new T.Vector2(0,-.035);
-  const grinVertices=[];
-  for(let i=0;i<grinOutline.length;i++){
-    const a=grinOutline[i],b=grinOutline[(i+1)%grinOutline.length];
-    for(const point of [grinCenter,b,a])grinVertices.push(point.x,point.y,0);
-  }
-  const grinGeometry=new T.BufferGeometry();
-  grinGeometry.setAttribute('position',new T.Float32BufferAttribute(grinVertices,3));
+  const openMouth=mesh(detailGeometry('open-mouth',()=>new T.CircleGeometry(.135,32)),purple,[0,2.65,.7]);openMouth.scale.y=1.2;breathFeatures.push(openMouth);
+  const mouthRim=mesh(detailGeometry('mouth-rim',()=>new T.TorusGeometry(.135,.023,8,32)),purple,[0,2.65,.705]);mouthRim.scale.y=1.2;breathFeatures.push(mouthRim);
+  const exhaleMouth=mesh(detailGeometry('exhale-mouth',()=>new T.CircleGeometry(.075,24)),purple,[0,2.65,.7]);exhaleMouth.scale.set(1.25,.65,1);breathFeatures.push(exhaleMouth);
+  const exhaleLip=mesh(detailGeometry('exhale-lip',()=>new T.TorusGeometry(.075,.025,8,24)),purple,[0,2.65,.705]);exhaleLip.scale.set(1.25,.65,1);breathFeatures.push(exhaleLip);
+  const grinGeometry=detailGeometry('grin',()=>{
+    const grin=new T.Shape();
+    grin.moveTo(-.28,.07);grin.quadraticCurveTo(0,.035,.28,.07);
+    grin.bezierCurveTo(.25,-.07,.15,-.165,0,-.17);
+    grin.bezierCurveTo(-.15,-.165,-.25,-.07,-.28,.07);
+    const grinOutline=grin.getPoints(16).slice(0,-1);
+    const grinCenter=new T.Vector2(0,-.035);
+    const grinVertices=[];
+    for(let i=0;i<grinOutline.length;i++){
+      const a=grinOutline[i],b=grinOutline[(i+1)%grinOutline.length];
+      for(const point of [grinCenter,b,a])grinVertices.push(point.x,point.y,0);
+    }
+    const grinGeometry=new T.BufferGeometry();
+    grinGeometry.setAttribute('position',new T.Float32BufferAttribute(grinVertices,3));
+    return grinGeometry;
+  });
   const happyMouth=mesh(grinGeometry,purple,[0,2.65,.7]);
   breathFeatures.push(happyMouth);
   breathFeatures.forEach(o=>o.visible=false);
@@ -190,17 +212,20 @@ export function createSongi() {
   const attached=[...breathFeatures,...parts.eye0.children,...parts.eye1.children,parts.mouth,
     ...root.children.filter(o=>o.isMesh&&o.material===pink&&o.position.y===2.77)];
   for(const feature of attached) {
+    if(feature.geometry.userData.fittedToFace)continue;
     const attr=feature.geometry.attributes.position;
     const inverse=feature.matrixWorld.clone().invert();
+    const v=new T.Vector3();
+    const center=new T.Vector3().setFromMatrixPosition(feature.matrixWorld);
     for(let i=0;i<attr.count;i++) {
-      const v=new T.Vector3().fromBufferAttribute(attr,i).applyMatrix4(feature.matrixWorld);
-      const center=new T.Vector3(0,0,0).applyMatrix4(feature.matrixWorld);
+      v.fromBufferAttribute(attr,i).applyMatrix4(feature.matrixWorld);
       const relief=v.z-center.z;
       v.z=faceSurface(v.x,v.y)+.100+relief;
       v.applyMatrix4(inverse);attr.setXYZ(i,v.x,v.y,v.z);
     }
     attr.needsUpdate=true;feature.geometry.computeVertexNormals();
     feature.geometry.computeBoundingSphere();
+    feature.geometry.userData.fittedToFace=true;
   }
   const headPivot=new T.Group();
   headPivot.position.y=2.55;
@@ -210,7 +235,7 @@ export function createSongi() {
   root.userData.parts=parts;
   const sleepBubbles=new T.Group();sleepBubbles.name='sleep-bubbles';root.add(sleepBubbles);sleepBubbles.visible=false;
   for(let i=0;i<5;i++){
-    const bubble=new T.Mesh(new T.SphereGeometry(1,12,8),new T.MeshStandardMaterial({color:'#e6e2ff',transparent:true,opacity:0,roughness:.22,metalness:.08,depthWrite:false}));
+    const bubble=new T.Mesh(detailGeometry('sleep-bubble',()=>new T.SphereGeometry(1,12,8)),new T.MeshStandardMaterial({color:'#e6e2ff',transparent:true,opacity:0,roughness:.22,metalness:.08,depthWrite:false}));
     bubble.castShadow=bubble.receiveShadow=false;sleepBubbles.add(bubble);
   }
   const normalFace=new T.Color('#fff5e7'),pinkFace=new T.Color('#f3bdca'),grayFace=new T.Color('#a6a5ad');
