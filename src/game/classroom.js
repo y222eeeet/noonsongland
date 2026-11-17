@@ -103,9 +103,14 @@ export function startClassroom(game){
  chalkTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
  const chalk=new T.MeshBasicMaterial({map:chalkTexture});
  add(new T.PlaneGeometry(boardWidth,boardHeight),chalk,0,boardCenter,.085,board);
+ const chairLeg=new T.BoxGeometry(.12,.78,.12);
+ const chairBack=new T.BoxGeometry(.95,.95,.13);
+ const chairSeat=new T.BoxGeometry(.95,.18,.78);
+ const deskLeg=new T.BoxGeometry(.15,1.45,.15);
+ const deskTop=new T.BoxGeometry(2.25,.22,1.35);
  function desk(x,z){
-  const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
-  const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
+  const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(deskTop,wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(deskLeg,wood,sx,.73,sz,table);
+  const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(chairSeat,chairMat,0,.83,0,chair);add(chairBack,chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(chairLeg,wood,sx,.4,sz,chair);
  }
  // Four-by-four desk blocks: rows remain separated by a walkable gap after
  // each chair, and the generous column spacing leaves routes between blocks.

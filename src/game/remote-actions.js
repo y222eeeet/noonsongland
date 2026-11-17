@@ -48,14 +48,13 @@ export function createRemoteActions(avatar, scene) {
  cigarette.visible=false;
  const cloud=new T.Group();scene.add(cloud);cloud.visible=false;
  const material=new T.MeshStandardMaterial({color:'#ece7f5',transparent:true,opacity:.48,roughness:.5,depthWrite:false});
- for(const radius of [.23,.31,.37,.3]){
-  cloud.add(new T.Mesh(geometry(`smoke-${radius}`,()=>new T.SphereGeometry(radius,14,10)),material));
- }
  const smokeOrigin=new T.Vector3();
  let event=null,started=0,duration=0;
  const sigh=new T.Group(),sighMaterial=new T.MeshStandardMaterial({color:'#f8efff',transparent:true,opacity:.58,roughness:.35,depthWrite:false});
- const initial=[[0,0,0,.24],[.13,.22,.02,.3],[-.08,.48,0,.36],[.12,.73,.01,.28]];
- for(let i=0;i<16;i++){const [x,y,z,r]=initial[i%4],radius=i<4?r:.24;const puff=new T.Mesh(geometry(`sigh-${radius}`,()=>new T.SphereGeometry(radius,16,12)),sighMaterial);if(i<4)puff.position.set(x,y,z);else{puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2)}sigh.add(puff)}
+ function addSighPuffs(){
+  const initial=[[0,0,0,.24],[.13,.22,.02,.3],[-.08,.48,0,.36],[.12,.73,.01,.28]];
+  for(let i=0;i<16;i++){const [x,y,z,r]=initial[i%4],radius=i<4?r:.24;const puff=new T.Mesh(geometry(`sigh-${radius}`,()=>new T.SphereGeometry(radius,16,12)),sighMaterial);if(i<4)puff.position.set(x,y,z);else{puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2)}sigh.add(puff)}
+ }
  scene.add(sigh);sigh.visible=false;
  let sighEvent=-1,sighStarted=0,sighData;
  function update(s,now,elapsed,dt){
@@ -105,9 +104,11 @@ export function createRemoteActions(avatar, scene) {
    grip.position.copy(handPosition);
    connectArm(upperArm,shoulder,elbow);connectArm(forearm,elbow,handPosition);
   }
-  const burn=Number.isFinite(s.smokeBurn)?Math.max(.2,Math.min(1,s.smokeBurn)):1;
-  stick.scale.y=burn;stick.position.z=.085+.275*burn;tip.position.z=.085+.55*burn;
-  ember.emissiveIntensity=lift?1.8:.1;
+  if(smoke){
+   const burn=Number.isFinite(s.smokeBurn)?Math.max(.2,Math.min(1,s.smokeBurn)):1;
+   stick.scale.y=burn;stick.position.z=.085+.275*burn;tip.position.z=.085+.55*burn;
+   ember.emissiveIntensity=lift?1.8:.1;
+  }
   avatar.userData.parts.arm0.visible=!smoke&&!beverage;
   const action=phase==='inhale'?'inhale':phase==='exhale'?'exhale':'idle';
   const held=Math.max(0,Math.min(120,s.held+(action==='inhale'?elapsed:0)));
@@ -122,7 +123,7 @@ export function createRemoteActions(avatar, scene) {
   }
   const sighAge=(now-sighStarted)/1000;
   sigh.visible=!!sighData&&s.sighEvent>0&&sighAge>=0&&sighAge<5;
-  if(sigh.visible){const profile=sighData.profile;const angle=sighData.rotation;
+  if(sigh.visible){if(!sigh.children.length)addSighPuffs();const profile=sighData.profile;const angle=sighData.rotation;
    sigh.position.fromArray(sighData.origin);sigh.position.x+=Math.sin(angle)*sighAge*.18+Math.sin(sighAge*4)*.06;sigh.position.z+=Math.cos(angle)*sighAge*.18;sigh.position.y+=sighAge*1.7;
    sigh.scale.setScalar(profile.scale*(1+sighAge*.42));sigh.rotation.y=sighAge*.24;sighMaterial.opacity=profile.opacity*(1-sighAge/5);sigh.children.forEach((p,i)=>p.visible=i<profile.count);
   }
@@ -130,6 +131,11 @@ export function createRemoteActions(avatar, scene) {
   const id=smoke?s.smokeEvent:undefined;
   const age=smoke?s.smokeAge:undefined;
   if(Number.isFinite(id)&&id>0&&Number.isFinite(age)&&id!==event){
+   if(!cloud.children.length){
+    for(const radius of [.23,.31,.37,.3]){
+     cloud.add(new T.Mesh(geometry(`smoke-${radius}`,()=>new T.SphereGeometry(radius,14,10)),material));
+    }
+   }
    event=id;started=now-Math.max(0,age)*1000;duration=prepareSmokeExhale(cloud,s.smokeHeld).duration;
    cloud.position.copy(avatar.position);cloud.position.y+=2.65;
    cloud.position.x+=Math.sin(s.rotation)*.95;cloud.position.z+=Math.cos(s.rotation)*.95;

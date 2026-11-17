@@ -33,7 +33,14 @@ export function addSledSnow(scene) {
  const material=new T.PointsMaterial({map:texture,size:.60,transparent:true,depthWrite:false,opacity:.86});
  const snow=new T.Points(geometry,material);
  snow.name='sled-route-snow';
- snow.frustumCulled=false;
+ // Bound the full fall and drift, including a margin for the point sprites.
+ const bounds=new T.Box3();
+ const corner=new T.Vector3();
+ for(const {x,z,floor,drift} of flakes){
+  bounds.expandByPoint(corner.set(x-drift,floor+.10,z-drift));
+  bounds.expandByPoint(corner.set(x+drift,floor+fallHeight+.10,z+drift));
+ }
+ geometry.boundingSphere=bounds.expandByScalar(1).getBoundingSphere(new T.Sphere());
  scene.add(snow);
 
  function update(dt,visible=true) {
