@@ -255,7 +255,7 @@ export function startClassroom(game){
  }
  function checkVictory(now){
   if(won||!victoryTargets.every(object=>object.userData.destroyed))return;
-  won=true;victoryStartedAt=now;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.textContent='송이가 신나게 환호하고 있어요!';
+  won=true;victoryStartedAt=now;status.hidden=false;status.textContent='강의실 파괴 성공!';hint.hidden=true;
   songi.rotation.y=0;back.hidden=true;
   const {x,y,z}=songi.position;
   camera.position.set(x,y+6.4,z+12);
@@ -286,7 +286,7 @@ export function startClassroom(game){
   const swingActive=!won&&now<swingingUntil;
   const celebrationAge=now-victoryStartedAt;
   const celebrating=won&&celebrationAge<5000;
-  if(won&&!celebrating&&!resultShown){resultShown=true;resultActions.style.display='flex';hint.hidden=true;joy.hidden=true;}
+  if(won&&!celebrating&&!resultShown){resultShown=true;resultActions.style.display='flex';joy.hidden=true;}
   let walking=false;
   if(!won&&!paused&&!swingActive&&isMobile&&moveVector.lengthSq()>.006){const dx=-Math.cos(mobileYaw)*moveVector.x-Math.sin(mobileYaw)*moveVector.y,dz=Math.sin(mobileYaw)*moveVector.x-Math.cos(mobileYaw)*moveVector.y;forward.set(dx,0,dz).normalize();songi.rotation.y=Math.atan2(forward.x,forward.z);candidate.copy(songi.position).addScaledVector(forward,dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}
   if(!won&&!paused&&!swingActive&&!isMobile){const turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0),drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);songi.rotation.y+=turn*dt*2.5;if(Math.abs(drive)>.01){forward.set(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));candidate.copy(songi.position).addScaledVector(forward,drive*dt*4.2);if(canOccupy(candidate.x,candidate.z)){songi.position.copy(candidate);walking=true}}}
