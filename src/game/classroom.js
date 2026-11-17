@@ -239,6 +239,7 @@ export function startClassroom(game){
  const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
   if(professorPhase==='waiting'||professorPhase==='gone')return;
+  professor.userData.setScared(true,now/1000);
   if(professorPhase==='shaking'){
    // Keep the professor upright: a tiny sideways shuffle and fine tremor read
    // as fear without the wide, fan-like body rotation.
