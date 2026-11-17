@@ -49,6 +49,29 @@ export const MODE_UI_RULES=Object.freeze({
 });
 export function getModeUiRule(mode){return MODE_UI_RULES[mode]||commonControls}
 
+// Transient UI belongs to a mode, not to an individual click handler. When a
+// transition occurs, every channel the destination mode does not own is
+// cleared. This prevents a completed action (for example, smoke's “후—”) from
+// surviving after its mode has already ended.
+const transient=channels=>Object.freeze(channels);
+export const MODE_TRANSIENT_UI_RULES=Object.freeze({
+ [PLAYER_MODE.IDLE]:transient([]),
+ [PLAYER_MODE.SEATED]:transient([]),
+ [PLAYER_MODE.GUESTBOOK]:transient([]),
+ [PLAYER_MODE.SIGH]:transient(['status','sighAction']),
+ [PLAYER_MODE.SMOKE]:transient(['status','smokeAction']),
+ [PLAYER_MODE.SEATED_SMOKE]:transient(['status','smokeAction']),
+ [PLAYER_MODE.DRINK]:transient(['status','chugAction']),
+ [PLAYER_MODE.SLED]:transient(['status','sledLyric']),
+ [PLAYER_MODE.SWIM]:transient([]),
+ [PLAYER_MODE.SKY]:transient([]),
+ [PLAYER_MODE.SKY_REST]:transient([]),
+ [PLAYER_MODE.POCHA]:transient([]),
+ [PLAYER_MODE.CLASSROOM]:transient([]),
+ [PLAYER_MODE.CLASSROOM_BREAK]:transient([])
+});
+export function getModeTransientUi(mode){return MODE_TRANSIENT_UI_RULES[mode]||MODE_TRANSIENT_UI_RULES[PLAYER_MODE.IDLE]}
+
 export const WORLD_RULES=Object.freeze({
  campus:Object.freeze({isolated:false,visibleWorlds:Object.freeze(['campus'])}),
  sky:Object.freeze({isolated:true,visibleWorlds:Object.freeze(['sky'])}),
