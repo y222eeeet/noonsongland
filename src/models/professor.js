@@ -26,7 +26,7 @@ export function createProfessor(variant) {
   const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p)));
   return mesh(new T.TubeGeometry(curve,16,r,5,false),mat,0,0,0);
  }
- const calm=[],scared=[];
+ const calm=[],worried=[],scared=[];
  oval(hair,0,3.23,-.18,woman?.91:.84,woman?.91:.78,.67);
  oval(skin,0,3.16,.13,.76,.75,.60);
  for(const side of [-1,1]){
@@ -40,6 +40,8 @@ export function createProfessor(variant) {
   scared.push(oval(shirt,x,3.18,.683,.135,.155,.045));
   scared.push(oval(ink,x+side*.024,3.18,.728,.053,.075,.019));
   scared.push(stroke(hair,[[x+side*.115,3.415,.671],[x,3.467,.685],[x-side*.104,3.507,.691]],.027));
+  worried.push(oval(ink,x,3.18,.684,.082,.114,.04));
+  worried.push(stroke(hair,[[x+side*.10,3.405,.676],[x,3.445,.69],[x-side*.10,3.478,.692]],.026));
   calm.push(stroke(hair,[[x-.115,3.41,.665],[x,3.445,.685],[x+.115,3.415,.665]],.029));
   const frame=mesh(new T.TorusGeometry(.246,.033,6,woman?20:4),glasses,x,3.17,.711);
   if(!woman){frame.rotation.z=Math.PI/4;frame.scale.set(1.38,1.12,1);}
@@ -51,12 +53,28 @@ export function createProfessor(variant) {
  calm.push(stroke(ink,[[-.15,2.91,.661],[0,2.875,.685],[.15,2.91,.661]],.023));
  const fearMouth=oval(ink,0,2.85,.683,.135,.10,.033);
  scared.push(fearMouth);
- scared.forEach(mesh=>mesh.visible=false);
- root.userData.setScared=(fear,elapsed=0)=>{
-  calm.forEach(mesh=>mesh.visible=!fear);
-  scared.forEach(mesh=>mesh.visible=fear);
-  if(fear)fearMouth.scale.y=.10+Math.sin(elapsed*29)*.016;
+ worried.push(stroke(ink,[[-.12,2.84,.675],[0,2.88,.695],[.12,2.84,.675]],.024));
+ const sweat=material('#83dfff');
+ const drops=[-1,1].map(side=>{
+  const drop=oval(sweat,side*.63,3.32,.62,.044,.085,.035);
+  drop.rotation.z=side*.22;
+  return drop;
+ });
+ root.userData.setExpression=(mode,elapsed=0)=>{
+  calm.forEach(mesh=>mesh.visible=mode==='calm');
+  worried.forEach(mesh=>mesh.visible=mode==='worried');
+  scared.forEach(mesh=>mesh.visible=mode==='fear');
+  if(mode==='fear')fearMouth.scale.y=.10+Math.sin(elapsed*29)*.016;
+  drops.forEach((drop,i)=>{
+   drop.visible=mode==='worried';
+   if(!drop.visible)return;
+   const phase=(elapsed*1.25+i*.5)%1;
+   drop.position.y=3.36-phase*.42;
+   const size=Math.sin(Math.PI*phase);
+   drop.scale.set(.044*size,.085*size,.035*size);
+  });
  };
+ root.userData.setExpression('calm');
  const fringe=oval(hair,-.27,3.70,.43,.60,.25,.36);
  fringe.rotation.z=.39;
  oval(hair,.44,3.65,.34,.38,.26,.36).rotation.z=-.43;

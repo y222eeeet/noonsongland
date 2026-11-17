@@ -224,7 +224,9 @@ export function startClassroom(game){
   transitionLength=join;swingStartedAt=now;recoveringAt=null;queuedSwing=null;
   swingingUntil=now+swingLength;releaseAt=0;
   swingCount++;
-  if(swingCount===1)professorPhase='shaking';else if(swingCount===3){professorPhase='running';professorRunStartedAt=now;}
+  if(swingCount===1)professorPhase='worried';
+  else if(swingCount===3)professorPhase='shaking';
+  else if(swingCount===6){professorPhase='running';professorRunStartedAt=now;}
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
   pendingHits=destructibles.filter(object=>{
@@ -240,7 +242,11 @@ export function startClassroom(game){
  const professorDirection=new T.Vector3();
  function updateProfessor(now,dt){
   if(professorPhase==='waiting'||professorPhase==='gone')return;
-  professor.userData.setScared(true,now/1000);
+  if(professorPhase==='worried'){
+   professor.userData.setExpression('worried',now/1000);
+   return;
+  }
+  professor.userData.setExpression('fear',now/1000);
   if(professorPhase==='shaking'){
    // Keep the professor upright: a tiny sideways shuffle and fine tremor read
    // as fear without the wide, fan-like body rotation.
