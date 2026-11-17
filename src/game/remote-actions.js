@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { placeSmokePuff } from './smoke-plume.js';
+import { prepareSmokeExhale, updateSmokeExhale } from './smoke-plume.js';
 import { createDizzySpiralSet } from '../models/dizzy-spirals.js';
 
 // Geometry is immutable after construction, so every remote effect can share
@@ -47,8 +47,11 @@ export function createRemoteActions(avatar, scene) {
  const tip=new T.Mesh(geometry('tip',()=>new T.SphereGeometry(.048,8,6)),ember);tip.position.z=.66;cigarette.add(tip);
  cigarette.visible=false;
  const cloud=new T.Group();scene.add(cloud);cloud.visible=false;
- const material=new T.MeshStandardMaterial({color:'#f8efff',transparent:true,opacity:0,depthWrite:false});
- for(let i=0;i<16;i++){const radius=.22+(i%3)*.05,puff=new T.Mesh(geometry(`smoke-${radius}`,()=>new T.SphereGeometry(radius,10,8)),material);cloud.add(puff)}
+ const material=new T.MeshStandardMaterial({color:'#ece7f5',transparent:true,opacity:.48,roughness:.5,depthWrite:false});
+ for(const radius of [.23,.31,.37,.3]){
+  cloud.add(new T.Mesh(geometry(`smoke-${radius}`,()=>new T.SphereGeometry(radius,14,10)),material));
+ }
+ const smokeOrigin=new T.Vector3();
  let event=null,started=0,duration=0;
  const sigh=new T.Group(),sighMaterial=new T.MeshStandardMaterial({color:'#f8efff',transparent:true,opacity:.58,roughness:.35,depthWrite:false});
  const initial=[[0,0,0,.24],[.13,.22,.02,.3],[-.08,.48,0,.36],[.12,.73,.01,.28]];
@@ -127,20 +130,21 @@ export function createRemoteActions(avatar, scene) {
   const id=smoke?s.smokeEvent:undefined;
   const age=smoke?s.smokeAge:undefined;
   if(Number.isFinite(id)&&id>0&&Number.isFinite(age)&&id!==event){
-   event=id;started=now-Math.max(0,age)*1000;duration=4;
+   event=id;started=now-Math.max(0,age)*1000;duration=prepareSmokeExhale(cloud,s.smokeHeld).duration;
    cloud.position.copy(avatar.position);cloud.position.y+=2.65;
    cloud.position.x+=Math.sin(s.rotation)*.95;cloud.position.z+=Math.cos(s.rotation)*.95;
+   smokeOrigin.copy(cloud.position);
    cloud.rotation.y=s.rotation;
   }
   const life=(now-started)/1000;cloud.visible=event!==null&&life>=0&&life<duration;
   if(cloud.visible){
-   material.color.set('#ece7f5');
-   const progress=life/duration;
-   material.opacity=.38*Math.min(1,progress*9)*(1-progress);
-   cloud.children.forEach((p,i)=>placeSmokePuff(p,i,progress,1+progress*.22));
+   cloud.position.copy(smokeOrigin);
+   cloud.position.x+=Math.sin(cloud.rotation.y)*life*.35;
+   cloud.position.z+=Math.cos(cloud.rotation.y)*life*.35;
+   updateSmokeExhale(cloud,life);
   }
  }
  function hide(){smokingArm.visible=false;cigarette.visible=false;cloud.visible=false;sigh.visible=false;if(dizzySpirals)dizzySpirals.visible=false;avatar.userData.parts.arm0.visible=true;}
- function dispose(){hide();scene.remove(cloud,sigh);sighMaterial.dispose();material.dispose();}
+ function dispose(){hide();scene.remove(cloud,sigh);sighMaterial.dispose();cloud.children.forEach(puff=>{if(puff.userData.ownSmokeMaterial)puff.material.dispose()});material.dispose();}
  return {update,hide,dispose};
 }
