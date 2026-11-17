@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { placeSmokePuff } from './smoke-plume.js';
 import { createDizzySpiralSet } from '../models/dizzy-spirals.js';
 
 // Geometry is immutable after construction, so every remote effect can share
@@ -126,13 +127,18 @@ export function createRemoteActions(avatar, scene) {
   const id=smoke?s.smokeEvent:undefined;
   const age=smoke?s.smokeAge:undefined;
   if(Number.isFinite(id)&&id>0&&Number.isFinite(age)&&id!==event){
-   event=id;started=now-Math.max(0,age)*1000;duration=smoke?4:5;
+   event=id;started=now-Math.max(0,age)*1000;duration=4;
    cloud.position.copy(avatar.position);cloud.position.y+=2.65;
    cloud.position.x+=Math.sin(s.rotation)*.95;cloud.position.z+=Math.cos(s.rotation)*.95;
-   cloud.userData.smoke=smoke;cloud.userData.rotation=s.rotation;
+   cloud.rotation.y=s.rotation;
   }
   const life=(now-started)/1000;cloud.visible=event!==null&&life>=0&&life<duration;
-  if(cloud.visible){const smokeCloud=cloud.userData.smoke;cloud.position.y+=dt*(smokeCloud?.65:1.3);cloud.position.x+=Math.sin(cloud.userData.rotation)*dt*.25;cloud.position.z+=Math.cos(cloud.userData.rotation)*dt*.25;material.color.set(smokeCloud?'#ece7f5':'#f8efff');material.opacity=.5*(1-life/duration);cloud.children.forEach((p,i)=>{p.position.set(Math.sin(i*2.4)*(.15+life*.15),(i%5)*.13,Math.cos(i*1.7)*.18);p.scale.setScalar(.6+life*.45)});}
+  if(cloud.visible){
+   material.color.set('#ece7f5');
+   const progress=life/duration;
+   material.opacity=.38*Math.min(1,progress*9)*(1-progress);
+   cloud.children.forEach((p,i)=>placeSmokePuff(p,i,progress,1+progress*.22));
+  }
  }
  function hide(){smokingArm.visible=false;cigarette.visible=false;cloud.visible=false;sigh.visible=false;if(dizzySpirals)dizzySpirals.visible=false;avatar.userData.parts.arm0.visible=true;}
  function dispose(){hide();scene.remove(cloud,sigh);sighMaterial.dispose();material.dispose();}
