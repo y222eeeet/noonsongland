@@ -1,3 +1,4 @@
+import { createClassroomWallMarks } from './classroom-wall-marks.js';
 import { sampleClassroomSwing } from './classroom-swing.js';
 import * as T from 'three';
 import { createProfessor } from '../models/professor.js';
@@ -60,6 +61,21 @@ export function startClassroom(game){
   add(new T.BoxGeometry(.35,9,halfZ*2+1),wallMaterials[2],-halfX,4.3,0),
   add(new T.BoxGeometry(.35,9,halfZ*2+1),wallMaterials[3],halfX,4.3,0)
  ];
+ const wallMarks=createClassroomWallMarks();
+ const wallSwingRay=new T.Raycaster(),wallSwingOrigin=new T.Vector3(),wallSwingDirection=new T.Vector3();
+ function findWallContact(){
+  wallSwingOrigin.copy(songi.position);wallSwingOrigin.y+=1.65;
+  wallSwingRay.far=swingReach;
+  const targets=[...classroomWalls,...destructibles.filter(object=>!object.userData.destroyed)];
+  for(const offset of [0,-.30,.30,-.60,.60]){
+   const yaw=songi.rotation.y+offset;
+   wallSwingDirection.set(Math.sin(yaw),0,Math.cos(yaw));
+   wallSwingRay.set(wallSwingOrigin,wallSwingDirection);
+   const hit=wallSwingRay.intersectObjects(targets,true)[0];
+   if(hit&&classroomWalls.includes(hit.object))return hit;
+  }
+  return null;
+ }
  const victoryWallRay=new T.Raycaster(),victoryLookTarget=new T.Vector3();
  function revealOnlyBlockingWall(cameraPosition,target){
   // Restore every wall first, then fade only the closest wall between the
@@ -182,7 +198,7 @@ export function startClassroom(game){
  const tipTrail=new T.Mesh(tipGeometry,sweepMaterial);
  tipTrail.visible=false;songi.add(tipTrail);
  const hitStop=35,hitProgress=.58;
- let pendingHits=[],hitAt=0,releaseAt=0;
+ let pendingHits=[],pendingWall=null,hitAt=0,releaseAt=0;
  const keys={},moveVector=new T.Vector2(),forward=new T.Vector3(),candidate=new T.Vector3(),raycaster=new T.Raycaster(),pointer=new T.Vector2(),cameraForward=new T.Vector3();let swingingUntil=0,joyPointer=null,canvasPress=null,mobileYaw=songi.rotation.y,mobilePitch=0;
  function resize(){const rect=game.getBoundingClientRect();renderer.setSize(rect.width,rect.height,false);camera.aspect=rect.width/rect.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
  function canOccupy(x,z){if(Math.abs(x)>halfX-1.1||Math.abs(z)>halfZ-1.1)return false;return !obstacles.some(obstacle=>!obstacle.group.userData.destroyed&&Math.abs(x-obstacle.x)<obstacle.w+.78&&Math.abs(z-obstacle.z)<obstacle.d+.78)}
@@ -205,8 +221,9 @@ export function startClassroom(game){
    const delta=object.position.clone().sub(songi.position);delta.y=0;
    return delta.length()<=swingReach&&facing.dot(delta.normalize())>=Math.cos(.72);
   });
+  pendingWall=findWallContact();
   hitAt=now+downLength*hitProgress/downEnd;
-  releaseAt=pendingHits.length?hitAt+hitStop:0;
+  releaseAt=(pendingHits.length||pendingWall)?hitAt+hitStop:0;
   if(releaseAt)swingingUntil+=hitStop;
  }
  const professorDirection=new T.Vector3();
@@ -241,11 +258,12 @@ export function startClassroom(game){
  addEventListener('keydown',event=>{if(event.code==='Space'){event.preventDefault();if(!event.repeat)swing()}if(/Arrow|Key[WASD]/.test(event.code)){keys[event.code]=true;event.preventDefault()}});addEventListener('keyup',event=>keys[event.code]=false);
  canvas.addEventListener('pointerdown',event=>{canvasPress={x:event.clientX,y:event.clientY,lastX:event.clientX,lastY:event.clientY,dragged:false}});
  canvas.addEventListener('pointermove',event=>{if(!isMobile||!canvasPress)return;const dx=event.clientX-canvasPress.lastX,dy=event.clientY-canvasPress.lastY;if(Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)>8)canvasPress.dragged=true;if(canvasPress.dragged){mobileYaw-=dx*.008;mobilePitch=Math.max(-.28,Math.min(.45,mobilePitch-dy*.006));canvasPress.lastX=event.clientX;canvasPress.lastY=event.clientY}});
- canvas.addEventListener('pointerup',event=>{if(!isMobile||!canvasPress||canvasPress.dragged){canvasPress=null;return}const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(destructibles,true)[0];swing(hit?.point);canvasPress=null});
+ canvas.addEventListener('pointerup',event=>{if(!isMobile||!canvasPress||canvasPress.dragged){canvasPress=null;return}const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects([...classroomWalls,...destructibles.filter(object=>!object.userData.destroyed)],true)[0];swing(hit?.point);canvasPress=null});
  joy.addEventListener('pointerdown',event=>{joyPointer=event.pointerId;joy.setPointerCapture(event.pointerId)});joy.addEventListener('pointermove',event=>{if(event.pointerId!==joyPointer)return;const rect=joy.getBoundingClientRect();let x=(event.clientX-(rect.left+rect.width/2))/42,z=(event.clientY-(rect.top+rect.height/2))/42;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length}moveVector.set(x,z);stick.style.transform=`translate(${x*27}px,${z*27}px)`});['pointerup','pointercancel'].forEach(type=>joy.addEventListener(type,event=>{if(event.pointerId===joyPointer){joyPointer=null;moveVector.set(0,0);stick.style.transform=''}}));
  const clock=new T.Clock();function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.04),now=performance.now();
   const paused=releaseAt>now&&now>=hitAt;
-  if(pendingHits.length&&now>=releaseAt){
+  if((pendingHits.length||pendingWall)&&now>=releaseAt){
+   if(pendingWall){wallMarks.add(pendingWall);pendingWall=null;}
    for(const object of pendingHits){
     object.userData.destroyed=true;object.userData.destroyedAt=now;
     impact(object.getWorldPosition(new T.Vector3()),object.userData.debrisColor,now);
@@ -338,6 +356,7 @@ export function startClassroom(game){
    if(camera.fov!==48){camera.fov=48;camera.updateProjectionMatrix()}
    const yaw=isMobile?mobileYaw:songi.rotation.y;cameraForward.set(Math.sin(yaw),0,Math.cos(yaw));camera.position.copy(songi.position).addScaledVector(cameraForward,-17);camera.position.y+=21;const shake=Math.max(0,(shakeUntil-now)/260)*shakeStrength;if(shake){camera.position.x+=Math.sin(now*.19)*shake;camera.position.y+=Math.cos(now*.27)*shake*.7;camera.position.z+=Math.sin(now*.31)*shake*.5}camera.lookAt(songi.position.x,songi.position.y+6.2+mobilePitch*14,songi.position.z);
   }
+  wallMarks.syncOpacity();
   renderer.render(scene,camera);
  }frame();
 }
