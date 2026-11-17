@@ -1,3 +1,4 @@
+import { createClassroomChalk } from './classroom-chalk.js';
 import { createClassroomWallMarks } from './classroom-wall-marks.js';
 import { sampleClassroomSwing } from './classroom-swing.js';
 import * as T from 'three';
@@ -92,7 +93,13 @@ export function startClassroom(game){
  const destructibles=[],victoryTargets=[],obstacles=[];
  function destructible(group,bounds,color='#d7ad8c',required=true){group.userData.destroyed=false;group.userData.debrisColor=color;destructibles.push(group);if(required)victoryTargets.push(group);obstacles.push({group,...bounds});return group}
  // Walls and the board define the room; only the furniture is breakable.
- const board=new T.Group();board.position.set(0,0,-halfZ+.24);scene.add(board);add(new T.BoxGeometry(10.2,3.4,.16),boardMat,0,5.35,0,board);add(new T.BoxGeometry(10.8,.22,.45),wood,0,3.62,-.31,board);
+ const board=new T.Group();
+ const boardWidth=10.2*1.5,boardHeight=3.4*1.5,boardCenter=5.35;
+ board.position.set(0,0,-halfZ+.24);scene.add(board);
+ add(new T.BoxGeometry(boardWidth,boardHeight,.16),boardMat,0,boardCenter,0,board);
+ add(new T.BoxGeometry(10.8*1.5,.22,.45),wood,0,boardCenter-boardHeight/2,.12,board);
+ const chalk=new T.MeshBasicMaterial({map:createClassroomChalk(),transparent:true,depthWrite:false});
+ add(new T.PlaneGeometry(boardWidth,boardHeight),chalk,0,boardCenter,.085,board);
  function desk(x,z){
   const table=destructible(new T.Group(),{x,z,w:1.45,d:1.0},'#c78f68');table.position.set(x,0,z);scene.add(table);add(new T.BoxGeometry(2.25,.22,1.35),wood,0,1.52,0,table);for(const sx of [-.86,.86])for(const sz of [-.48,.48])add(new T.BoxGeometry(.15,1.45,.15),wood,sx,.73,sz,table);
   const chair=destructible(new T.Group(),{x,z:z+2.0,w:.72,d:.72},'#b99ddd');chair.position.set(x,0,z+2);scene.add(chair);add(new T.BoxGeometry(.95,.18,.78),chairMat,0,.83,0,chair);add(new T.BoxGeometry(.95,.95,.13),chairMat,0,1.28,.34,chair);for(const sx of [-.32,.32])for(const sz of [-.25,.25])add(new T.BoxGeometry(.12,.78,.12),wood,sx,.4,sz,chair);
