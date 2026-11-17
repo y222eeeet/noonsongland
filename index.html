@@ -35,7 +35,7 @@ import { addGroundWayfinding } from './src/models/ground-wayfinding.js';
 import { insidePond, onStoneBridge } from './src/game/pond-layout.js';
 import { orbitFrame, chooseOrbitAngle } from './src/game/swim-orbit.js';
 import { ROUTES, inRect, onMovingWalk, MOVING_WALK_SPEED, routeHeight } from './src/game/campus-routes-layout.js';
-import { canEnterActivity, getModeUiRule } from './src/game/shared-systems.js';
+import { canEnterActivity, getModeUiRule, getModeTransientUi } from './src/game/shared-systems.js';
 function prepareExhale(group,seconds){const amount=Math.max(0,Math.min(1,seconds/20));if(group.children.length===4){const template=group.children[0];for(let i=4;i<16;i++){const puff=template.clone();puff.position.set(Math.sin(i*2.4)*.24,.15+(i%6)*.18,Math.cos(i*1.7)*.16);puff.scale.setScalar(1+(i%3)*.2);group.add(puff)}}const profile={count:4+Math.round(amount*12),scale:1+amount*.85,opacity:.42+amount*.22};group.userData.exhale=profile;group.children.forEach((puff,i)=>puff.visible=i<profile.count);return profile}
 import { addMyungshinHall, addRearGate, addNorthSmokingArea } from './src/models/myungshin.js';
 import { createSookmyungHedge } from './src/models/sookmyung-hedge.js';
@@ -508,7 +508,16 @@ const sitButton=document.createElement('button'),standButton=document.createElem
 sitButton.textContent='앉기';standButton.textContent='일어나기';
 faceButton.dataset.defaultStyle=faceButton.style.cssText;sighButton.dataset.defaultStyle=sighButton.style.cssText;smokeButton.dataset.defaultStyle=smokeButton.style.cssText;chugButton.dataset.defaultStyle=chugButton.style.cssText;standButton.dataset.defaultStyle=standButton.style.cssText;
 function applyModeControls(mode){const rule=getModeUiRule(mode);faceButton.hidden=!rule.face;sighButton.hidden=!rule.sigh;fastButton.hidden=!rule.fast;smokeButton.hidden=!rule.smoke;chugButton.hidden=!rule.chug;joy.hidden=!rule.joystick;standButton.hidden=!rule.stand;restoreControl(sighButton);restoreControl(smokeButton);restoreControl(chugButton);restoreControl(standButton);sighButton.textContent=rule.sighExitSlot!==null?'그만하기':'한숨';smokeButton.textContent=rule.smokeExitSlot!==null?'그만하기':'담타';chugButton.textContent=rule.chugExitSlot!==null?'그만하기':'병나발';if(rule.sighExitSlot!==null)placeExitControl(sighButton,rule.sighExitSlot);if(rule.smokeExitSlot!==null)placeExitControl(smokeButton,rule.smokeExitSlot);if(rule.chugExitSlot!==null)placeExitControl(chugButton,rule.chugExitSlot);if(rule.standExitSlot!==null)placeExitControl(standButton,rule.standExitSlot)}
- let appliedActivityUi='';function syncActivityUi(){const mode=currentActionMode();if(!['idle','sigh','smoke','seated','seated-smoke','drink','sled'].includes(mode))return;const rule=getModeUiRule(mode);if(mode!==appliedActivityUi){applyModeControls(mode);appliedActivityUi=mode}inhaleButton.hidden=mode!=='sigh'||sighPhase==='exhale';smokeInhaleButton.hidden=!rule.smokeAction||smokePhase==='exhale'||smokePhase==='reload';chugInhaleButton.hidden=mode!=='drink'||chugPhase==='dizzy'}
+ const transientUiChannels=Object.freeze({
+  status:()=>{sighStatus.textContent='';sighStatus.classList.remove('sled-lyric')},
+  sighAction:()=>{clearTimeout(sighExitTimer);sighExitTimer=0;inhaleButton.hidden=true},
+  smokeAction:()=>{smokeInhaleButton.hidden=true},
+  chugAction:()=>{chugInhaleButton.hidden=true},
+  sledLyric:()=>{clearSledLyric();}
+ });
+ function clearModeTransientUi(mode){for(const channel of getModeTransientUi(mode))transientUiChannels[channel]?.()}
+ const managedActivityModes=new Set(['idle','sigh','smoke','seated','seated-smoke','drink','sled']);
+ let appliedActivityUi='';function syncActivityUi(){const mode=currentActionMode();if(mode!==appliedActivityUi){if(appliedActivityUi)clearModeTransientUi(appliedActivityUi);appliedActivityUi=mode;if(managedActivityModes.has(mode))applyModeControls(mode)}if(!managedActivityModes.has(mode))return;const rule=getModeUiRule(mode);inhaleButton.hidden=mode!=='sigh'||sighPhase==='exhale';smokeInhaleButton.hidden=!rule.smokeAction||smokePhase==='exhale'||smokePhase==='reload';chugInhaleButton.hidden=mode!=='drink'||chugPhase==='dizzy'}
 function setSeatUi(active){applyModeControls(active?(smokeMode?'seated-smoke':'seated'):(smokeMode?'smoke':'idle'))}
 window.refreshSongiSeatUi=()=>setSeatUi(Boolean(sittingBench));
 function standFromBench(){
