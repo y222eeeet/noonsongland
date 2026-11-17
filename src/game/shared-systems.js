@@ -33,10 +33,10 @@ export function canEnterActivity(mode,action){return MODE_RULES[mode]?.entryActi
 
 // Shared controls are described once per mode. Feature code must apply this
 // policy after a transition instead of toggling each button independently.
-const commonControls=Object.freeze({face:false,sigh:false,fast:false,smoke:false,smokeAction:false,chug:false,joystick:false,stand:false,sighExitSlot:null,smokeExitSlot:null,chugExitSlot:null,standExitSlot:null});
+const commonControls=Object.freeze({face:false,sigh:false,fast:false,map:false,smoke:false,smokeAction:false,chug:false,joystick:false,stand:false,sighExitSlot:null,smokeExitSlot:null,chugExitSlot:null,standExitSlot:null});
 const controls=overrides=>Object.freeze({...commonControls,...overrides});
 export const MODE_UI_RULES=Object.freeze({
- [PLAYER_MODE.IDLE]:controls({face:true,sigh:true,fast:true,smoke:true,chug:true,joystick:true}),
+ [PLAYER_MODE.IDLE]:controls({face:true,sigh:true,fast:true,map:true,smoke:true,chug:true,joystick:true}),
  // Standing is the seated action, so it keeps the same bottom-centre action
  // treatment as inhale instead of joining the top-left mode-exit controls.
  [PLAYER_MODE.SEATED]:controls({smoke:true,stand:true}),
