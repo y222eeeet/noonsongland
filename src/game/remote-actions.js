@@ -16,9 +16,11 @@ export function createRemoteActions(avatar, scene) {
  const forearm=new T.Mesh(geometry('arm',()=>new T.CapsuleGeometry(.15,1,5,10)),cream);
  const hand=new T.Mesh(geometry('hand',()=>new T.SphereGeometry(.19,12,8)),cream);
  const thumb=new T.Mesh(geometry('thumb',()=>new T.SphereGeometry(.095,10,8)),cream);thumb.position.set(.14,0,.06);
+ cigarette.position.set(.07,.14,.08);
+ cigarette.rotation.y=-.32;
  grip.add(hand,thumb,cigarette);smokingArm.add(upperArm,forearm,grip);avatar.add(smokingArm);smokingArm.visible=false;
  smokingArm.traverse(o=>{if(o.isMesh)o.castShadow=o.receiveShadow=true});
- const shoulder=new T.Vector3(-.85,2.03,.8),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
+ const shoulder=new T.Vector3(-.57,2.03,.02),elbow=new T.Vector3(),handPosition=new T.Vector3(),direction=new T.Vector3(),up=new T.Vector3(0,1,0);
  let handLift=0;
  let dizzySpirals=null;
  let bottle=null,bottleCap=null;
@@ -34,6 +36,7 @@ export function createRemoteActions(avatar, scene) {
   bottleCap=new T.Mesh(new T.CylinderGeometry(.09,.09,.085,16),new T.MeshStandardMaterial({color:'#e5dfc9',roughness:.8}));
   bottleCap.position.y=.624;
   bottle.add(glass,label,bottleCap);
+  bottle.position.z=.09;
   grip.add(bottle);
  }
 
@@ -92,14 +95,14 @@ export function createRemoteActions(avatar, scene) {
   // Idle non-smokers keep their untouched arm pose. Avoiding these vector and
   // quaternion updates per peer is significant in a populated courtyard.
   if(smoke||beverage){
-   handPosition.set(-.95+.63*handLift,1.75+.89*handLift,1.12+.23*handLift);
-   elbow.set(-1.05,1.86+.30*handLift,.95+.15*handLift);
    if(beverage){
-    handPosition.set(-.92+.82*handLift,1.62+1.02*handLift, .45+.95*handLift);
-    elbow.set(-.83,1.60+.50*handLift,.36+.50*handLift);
+    handPosition.set(-.91+.89*handLift,1.67+.93*handLift,.51+.87*handLift);
+    elbow.set(-.98,1.72+.39*handLift,.18+.44*handLift);
     bottle.rotation.set(-1.34*handLift,0,.15*(1-handLift));
     grip.rotation.x=0;
    }else{
+    handPosition.set(-.95+.85*handLift,1.75+.83*handLift,1.12+.04*handLift);
+    elbow.set(-1.05,1.86+.30*handLift,.95+.15*handLift);
     grip.rotation.x=.30*(1-handLift);
    }
    grip.position.copy(handPosition);
