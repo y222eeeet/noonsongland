@@ -66,17 +66,46 @@ export function createProfessor(variant) {
  for(const side of [-1,1])box(shirt,side*.132,2.38,.41,.20,.23,.08).rotation.z=side*.34;
  for(const y of [1.65,1.87,2.09])oval(buttons,.30,y,.356,.05,.05,.027);
  box(cardigan,.39,1.60,.345,.24,.21,.075);
- oval(cardigan,.66,1.93,0,.18,.49,.22).rotation.z=.21;
- oval(skin,.75,1.49,0,.145,.18,.145);
- oval(cardigan,-.62,1.99,.17,.18,.42,.20).rotation.z=-.23;
- box(plum,-.49,1.95,.44,.44,.61,.115,.035).rotation.z=-.20;
- box(shirt,-.46,2.24,.45,.36,.055,.09,.015).rotation.z=-.20;
- oval(skin,-.60,1.81,.47,.15,.16,.16);
+ function limb(name,x,y,build){
+  const start=root.children.length;
+  build();
+  const pieces=root.children.slice(start);
+  const pivot=new T.Group();
+  pivot.name=name;pivot.position.set(x,y,0);root.add(pivot);
+  for(const piece of pieces){
+   pivot.add(piece);
+   piece.position.sub(pivot.position);
+  }
+  return pivot;
+ }
+ const rightArm=limb('right-arm',.52,2.32,()=>{
+  oval(cardigan,.66,1.93,0,.18,.49,.22).rotation.z=.21;
+  oval(skin,.75,1.49,0,.145,.18,.145);
+ });
+ const leftArm=limb('left-arm',-.52,2.32,()=>{
+  oval(cardigan,-.62,1.99,.17,.18,.42,.20).rotation.z=-.23;
+  box(plum,-.49,1.95,.44,.44,.61,.115,.035).rotation.z=-.20;
+  box(shirt,-.46,2.24,.45,.36,.055,.09,.015).rotation.z=-.20;
+  oval(skin,-.60,1.81,.47,.15,.16,.16);
+ });
  if(woman)mesh(new T.CylinderGeometry(.49,.66,.89,12),plum,0,.96,0).scale.z=.66;
- for(const side of [-1,1]){
+ const legs=[-1,1].map(side=>limb('leg',side*.245,woman?.61:1.38,()=>{
   box(woman?skin:plum,side*.245,woman?.47:.79,0,woman?.27:.43,woman?.56:1.22,.36,.095);
   box(shoe,side*.245,.15,.13,.39,.30,.68,.12);
   box(shoe,side*.245,.268,.21,.33,.08,.17,.035);
- }
+ }));
+ root.userData.limbs={leftArm,rightArm,legs};
  return root;
+}
+
+
+export function poseProfessorRun(model,elapsed,heading){
+ const {leftArm,rightArm,legs}=model.userData.limbs;
+ const stride=Math.sin(elapsed*Math.PI*2*3.6);
+ model.position.y=.23*stride*stride;
+ model.rotation.set(.13,heading+stride*.11,stride*.09);
+ leftArm.rotation.set(stride*1.12,0,-.37-stride*.17);
+ rightArm.rotation.set(-stride*1.27,0,.43-stride*.21);
+ legs[0].rotation.x=-stride*.65;
+ legs[1].rotation.x=stride*.65;
 }

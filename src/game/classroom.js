@@ -2,7 +2,7 @@ import chalkboardUrl from '../assets/classroom-chalkboard.webp';
 import { createClassroomWallMarks } from './classroom-wall-marks.js';
 import { sampleClassroomSwing } from './classroom-swing.js';
 import * as T from 'three';
-import { createProfessor } from '../models/professor.js';
+import { createProfessor, poseProfessorRun } from '../models/professor.js';
 import { createSongi } from '../models/songi.js';
 
 const isMobile=matchMedia('(hover:none) and (pointer:coarse)').matches;
@@ -116,6 +116,7 @@ export function startClassroom(game){
  scene.add(professor);
  const professorStart=professor.position.clone();
  const professorTarget=new T.Vector3(17.25,0,-15.3);
+ let professorRunStartedAt=0;
  let swingCount=0,professorPhase='waiting',won=false,victoryStartedAt=0,resultShown=false;
  // Start in the centre aisle: between desk columns 2/3 and chair rows 2/3.
  const songi=createSongi();songi.position.set(0,.05,1);songi.rotation.y=Math.PI;scene.add(songi);songi.userData.animate?.(0,'idle',0);
@@ -223,7 +224,7 @@ export function startClassroom(game){
   transitionLength=join;swingStartedAt=now;recoveringAt=null;queuedSwing=null;
   swingingUntil=now+swingLength;releaseAt=0;
   swingCount++;
-  if(swingCount===1)professorPhase='shaking';else if(swingCount>=3)professorPhase='running';
+  if(swingCount===1)professorPhase='shaking';else if(swingCount===3){professorPhase='running';professorRunStartedAt=now;}
   if(target){const dx=target.x-songi.position.x,dz=target.z-songi.position.z;if(Math.hypot(dx,dz)>.2)songi.rotation.y=Math.atan2(dx,dz)}
   const facing=new T.Vector3(Math.sin(songi.rotation.y),0,Math.cos(songi.rotation.y));
   pendingHits=destructibles.filter(object=>{
@@ -255,7 +256,7 @@ export function startClassroom(game){
   }
   professorDirection.normalize();
   professor.position.addScaledVector(professorDirection,dt*7.5);
-  professor.rotation.y=Math.atan2(professorDirection.x,professorDirection.z);
+  poseProfessorRun(professor,(now-professorRunStartedAt)/1000,Math.atan2(professorDirection.x,professorDirection.z));
  }
  function checkVictory(now){
   if(won||!victoryTargets.every(object=>object.userData.destroyed))return;
