@@ -482,6 +482,7 @@ function hitsCampusObstacle(x,z){
  })
 }
 function move(x,z,dt){
+ if(!mapPanel.hidden)return false;
  if(swimming||sittingBench||skyMode&&(skyPose==='sleep'||bedMotion.active))return false;
  if(smokeMode&&smokePhase==='inhale'||chugMode&&chugPhase==='drink')x=z=0;
  const riding=!skyMode&&onMovingWalk(p.position.x,p.position.z);
@@ -568,7 +569,7 @@ addEventListener('resize',resize);resize();
  const sledActive=sledState!=='idle';
  let turn=(keys.KeyA||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0)+joyV.x;
  let drive=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joyV.z;
- if(sledActive||guestbook.isOpen()||sittingBench){turn=0;drive=0;}
+ if(sledActive||!mapPanel.hidden||guestbook.isOpen()||sittingBench){turn=0;drive=0;}
  if(sighMode){turn=0;drive=0;faceView=true}
  const controlling=Math.abs(turn)+Math.abs(drive)>.12;
  if(controlling){if(faceView){faceView=false;snapCamera=true;faceButton.textContent='얼굴 보기'}p.rotation.y+=turn*dt*2.5;help.style.opacity=0}
